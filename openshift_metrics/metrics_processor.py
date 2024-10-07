@@ -1,3 +1,4 @@
+import json
 from typing import List, Dict
 from collections import namedtuple
 
@@ -8,9 +9,15 @@ GPUInfo = namedtuple("GPUInfo", ["gpu_type", "gpu_resource", "node_model"])
 class MetricsProcessor:
     """Provides methods for merging metrics and processing it for billing purposes"""
 
-    def __init__(self, interval_minutes: int = 15, merged_data: dict = None):
+    def __init__(
+        self,
+        interval_minutes: int = 15,
+        merged_data: dict = None,
+        gpu_mapping_file: str = "gpu_node_map.json",
+    ):
         self.interval_minutes = interval_minutes
         self.merged_data = merged_data if merged_data is not None else {}
+        self.gpu_mapping = self._load_gpu_mapping(gpu_mapping_file)
 
     def merge_metrics(self, metric_name, metric_list):
         """Merge metrics (cpu, memory, gpu) by pod"""
@@ -51,8 +58,7 @@ class MetricsProcessor:
                         "node"
                     ] = node
 
-    @staticmethod
-    def _extract_gpu_info(metric_name: str, metric: Dict) -> GPUInfo:
+    def _extract_gpu_info(self, metric_name: str, metric: Dict) -> GPUInfo:
         """Extract GPU related info"""
         gpu_type = None
         gpu_resource = None
@@ -65,7 +71,21 @@ class MetricsProcessor:
             gpu_resource = metric["metric"].get("resource")
             node_model = metric["metric"].get("label_nvidia_com_gpu_machine")
 
+            # If GPU labels aren't found then try to determine the gpu type
+            # from the gpu node map file
+            if gpu_type == GPU_UNKNOWN_TYPE:
+                node_name = metric["metric"].get("node")
+                gpu_type = self.gpu_mapping.get(node_name, GPU_UNKNOWN_TYPE)
+
         return GPUInfo(gpu_type, gpu_resource, node_model)
+
+    @staticmethod
+    def _load_gpu_mapping(file_path: str) -> Dict[str, str]:
+        try:
+            with open(file_path, "r") as file:
+                return json.load(file)
+        except FileNotFoundError:
+            return {}
 
     def condense_metrics(self, metrics_to_check: List[str]) -> Dict:
         """
