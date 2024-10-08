@@ -1,4 +1,4 @@
-from unittest import TestCase
+from unittest import TestCase, mock
 from openshift_metrics import metrics_processor, utils
 
 
@@ -576,3 +576,101 @@ class TestCondenseMetrics(TestCase):
             ["cpu", "mem", "gpu_request", "gpu_type"]
         )
         self.assertEqual(condensed_dict, expected_condensed_dict)
+
+
+class TestExtractGPUInfo(TestCase):
+    def test_extract_gpu_info(self):
+        metric_with_label = {
+            "metric": {
+                "pod": "pod2",
+                "namespace": "namespace1",
+                "resource": "cpu",
+                "resource": "nvidia.com/gpu",
+                "label_nvidia_com_gpu_product": "V100-GPU",
+                "node": "node-1",
+                "label_nvidia_com_gpu_machine": "Dell PowerEdge",
+            },
+            "values": [
+                [60, 2],
+            ],
+        }
+
+        processor = metrics_processor.MetricsProcessor()
+        gpu_info = processor._extract_gpu_info("gpu_request", metric_with_label)
+
+        assert gpu_info.gpu_type == "V100-GPU"
+        assert gpu_info.gpu_resource == "nvidia.com/gpu"
+        assert gpu_info.node_model == "Dell PowerEdge"
+
+    def test_extract_gpu_info_with_missing_labels(self):
+        mocked_gpu_mapping = {
+            "node-1": "A100-GPU",
+            "node-2": "doesnt-matter",
+        }
+        metric_without_label = {
+            "metric": {
+                "pod": "pod1",
+                "namespace": "namespace1",
+                "resource": "nvidia.com/gpu",
+                "node": "node-1",
+            },
+            "values": [
+                [60, 1],
+            ],
+        }
+        metric_with_label = {
+            "metric": {
+                "pod": "pod2",
+                "namespace": "namespace1",
+                "resource": "cpu",
+                "resource": "nvidia.com/gpu",
+                "label_nvidia_com_gpu_product": "V100-GPU",
+                "node": "node-2",
+            },
+            "values": [
+                [60, 2],
+            ],
+        }
+
+        with mock.patch.object(
+            metrics_processor.MetricsProcessor,
+            "_load_gpu_mapping",
+            return_value=mocked_gpu_mapping,
+        ):
+            processor = metrics_processor.MetricsProcessor()
+            gpu_info = processor._extract_gpu_info("gpu_request", metric_without_label)
+
+            assert gpu_info.gpu_type == "A100-GPU"
+            assert gpu_info.gpu_resource == "nvidia.com/gpu"
+            assert gpu_info.node_model is None
+
+            # When the GPU label is present in the metrics, then the value in the gpu-node mapping isn't considered
+            gpu_info = processor._extract_gpu_info("gpu_request", metric_with_label)
+            assert gpu_info.gpu_type == "V100-GPU"
+
+    def test_extract_gpu_info_no_info_anywhere(self):
+        """When node is missing in the file, we get no gpu info"""
+        mocked_gpu_mapping = {
+            "node-2": "doesnt-matter",
+        }
+        metric_with_label = {
+            "metric": {
+                "pod": "pod2",
+                "namespace": "namespace1",
+                "resource": "cpu",
+                "resource": "nvidia.com/gpu",
+                "node": "node-1",
+            },
+            "values": [
+                [60, 2],
+            ],
+        }
+        with mock.patch.object(
+            metrics_processor.MetricsProcessor,
+            "_load_gpu_mapping",
+            return_value=mocked_gpu_mapping,
+        ):
+            processor = metrics_processor.MetricsProcessor()
+            gpu_info = processor._extract_gpu_info("gpu_request", metric_with_label)
+
+            assert gpu_info.gpu_type == metrics_processor.GPU_UNKNOWN_TYPE

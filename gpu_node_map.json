@@ -1,0 +1,17 @@
+{
+    "wrk-88": "Tesla-V100-PCIE-32GB",
+    "wrk-89": "Tesla-V100-PCIE-32GB",
+    "wrk-94": "NVIDIA-A100-SXM4-40GB",
+    "wrk-95": "NVIDIA-A100-SXM4-40GB",
+    "wrk-97": "NVIDIA-A100-SXM4-40GB",
+    "wrk-98": "NVIDIA-A100-SXM4-40GB",
+    "wrk-99": "NVIDIA-A100-SXM4-40GB",
+    "wrk-102": "Tesla-V100-PCIE-32GB",
+    "wrk-103": "Tesla-V100-PCIE-32GB",
+    "wrk-104": "Tesla-V100-PCIE-32GB",
+    "wrk-105": "Tesla-V100-PCIE-32GB",
+    "wrk-106": "Tesla-V100-PCIE-32GB",
+    "wrk-107": "Tesla-V100-PCIE-32GB",
+    "wrk-108": "Tesla-V100-PCIE-32GB"
+}
+
