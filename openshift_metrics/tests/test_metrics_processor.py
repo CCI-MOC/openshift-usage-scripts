@@ -1,5 +1,5 @@
 from unittest import TestCase
-from openshift_metrics import metrics_processor, utils
+from openshift_metrics import metrics_processor, invoice
 
 
 class TestMergeMetrics(TestCase):
@@ -490,43 +490,43 @@ class TestCondenseMetrics(TestCase):
                             "cpu": 1,
                             "mem": 4,
                             "gpu_request": 1,
-                            "gpu_type": utils.GPU_V100,
+                            "gpu_type": invoice.GPU_V100,
                         },
                         2700: {
                             "cpu": 1,
                             "mem": 4,
                             "gpu_request": 1,
-                            "gpu_type": utils.GPU_V100,
+                            "gpu_type": invoice.GPU_V100,
                         },
                         3600: {  # type of GPU is changed
                             "cpu": 1,
                             "mem": 4,
                             "gpu_request": 1,
-                            "gpu_type": utils.GPU_A100_SXM4,
+                            "gpu_type": invoice.GPU_A100_SXM4,
                         },
                         4500: {
                             "cpu": 1,
                             "mem": 4,
                             "gpu_request": 1,
-                            "gpu_type": utils.GPU_A100_SXM4,
+                            "gpu_type": invoice.GPU_A100_SXM4,
                         },
                         5400: {
                             "cpu": 1,
                             "mem": 4,
                             "gpu_request": 1,
-                            "gpu_type": utils.GPU_A100_SXM4,
+                            "gpu_type": invoice.GPU_A100_SXM4,
                         },
                         6300: {  # count of GPU is changed
                             "cpu": 1,
                             "mem": 4,
                             "gpu_request": 3,
-                            "gpu_type": utils.GPU_A100_SXM4,
+                            "gpu_type": invoice.GPU_A100_SXM4,
                         },
                         7200: {
                             "cpu": 1,
                             "mem": 4,
                             "gpu_request": 3,
-                            "gpu_type": utils.GPU_A100_SXM4,
+                            "gpu_type": invoice.GPU_A100_SXM4,
                         },
                         8100: {  # no longer using GPUs
                             "cpu": 1,
@@ -546,21 +546,21 @@ class TestCondenseMetrics(TestCase):
                             "mem": 4,
                             "duration": 1800,
                             "gpu_request": 1,
-                            "gpu_type": utils.GPU_V100,
+                            "gpu_type": invoice.GPU_V100,
                         },
                         3600: {
                             "cpu": 1,
                             "mem": 4,
                             "duration": 2700,
                             "gpu_request": 1,
-                            "gpu_type": utils.GPU_A100_SXM4,
+                            "gpu_type": invoice.GPU_A100_SXM4,
                         },
                         6300: {
                             "cpu": 1,
                             "mem": 4,
                             "duration": 1800,
                             "gpu_request": 3,
-                            "gpu_type": utils.GPU_A100_SXM4,
+                            "gpu_type": invoice.GPU_A100_SXM4,
                         },
                         8100: {
                             "cpu": 1,

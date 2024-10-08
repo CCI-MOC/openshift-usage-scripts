@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from collections import namedtuple
 from typing import List
 from decimal import Decimal, ROUND_HALF_UP
+import datetime
 
 # GPU types
 GPU_A100 = "NVIDIA-A100-40GB"
@@ -28,9 +29,11 @@ SU_UNKNOWN = "Openshift Unknown"
 
 ServiceUnit = namedtuple("ServiceUnit", ["su_type", "su_count", "determinig_resource"])
 
+
 @dataclass
 class Pod:
     """Object that represents a pod"""
+
     pod_name: str
     namespace: str
     start_time: int
@@ -43,8 +46,7 @@ class Pod:
     node_hostname: str
     node_model: str
 
-    @staticmethod
-    def get_service_unit(cpu_count, memory_count, gpu_count, gpu_type, gpu_resource) -> ServiceUnit:
+    def get_service_unit(self) -> ServiceUnit:
         """
         Returns the type of service unit, the count, and the determining resource
         """
@@ -52,11 +54,11 @@ class Pod:
         su_count = 0
 
         # pods that requested a specific GPU but weren't scheduled may report 0 GPU
-        if gpu_resource is not None and gpu_count == 0:
+        if self.gpu_resource is not None and self.gpu_request == 0:
             return ServiceUnit(SU_UNKNOWN_GPU, 0, "GPU")
 
         # pods in weird states
-        if cpu_count == 0 or memory_count == 0:
+        if self.cpu_request == 0 or self.memory_request == 0:
             return ServiceUnit(SU_UNKNOWN, 0, "CPU")
 
         known_gpu_su = {
@@ -82,18 +84,18 @@ class Pod:
             SU_UNKNOWN: {"gpu": -1, "cpu": 1, "ram": 1},
         }
 
-        if gpu_resource is None and gpu_count == 0:
+        if self.gpu_resource is None and self.gpu_request == 0:
             su_type = SU_CPU
-        elif gpu_type is not None and gpu_resource == WHOLE_GPU:
-            su_type = known_gpu_su.get(gpu_type, SU_UNKNOWN_GPU)
-        elif gpu_type == GPU_A100_SXM4:  # for MIG GPU of type A100_SXM4
-            su_type = A100_SXM4_MIG.get(gpu_resource, SU_UNKNOWN_MIG_GPU)
+        elif self.gpu_type is not None and self.gpu_resource == WHOLE_GPU:
+            su_type = known_gpu_su.get(self.gpu_type, SU_UNKNOWN_GPU)
+        elif self.gpu_type == GPU_A100_SXM4:  # for MIG GPU of type A100_SXM4
+            su_type = A100_SXM4_MIG.get(self.gpu_resource, SU_UNKNOWN_MIG_GPU)
         else:
             return ServiceUnit(SU_UNKNOWN_GPU, 0, "GPU")
 
-        cpu_multiplier = cpu_count / su_config[su_type]["cpu"]
-        gpu_multiplier = gpu_count / su_config[su_type]["gpu"]
-        memory_multiplier = memory_count / su_config[su_type]["ram"]
+        cpu_multiplier = self.cpu_request / su_config[su_type]["cpu"]
+        gpu_multiplier = self.gpu_request / su_config[su_type]["gpu"]
+        memory_multiplier = self.memory_request / su_config[su_type]["ram"]
 
         su_count = max(cpu_multiplier, gpu_multiplier, memory_multiplier)
 
@@ -113,6 +115,45 @@ class Pod:
     def get_runtime(self) -> Decimal:
         """Return runtime eligible for billing in hours"""
         return Decimal(self.duration) / 3600
+
+    @property
+    def end_time(self) -> int:
+        return self.start_time + self.duration
+
+    def generate_pod_row(self):
+        """
+        This returns a row to represent pod data.
+        It converts the epoch_time stamps to datetime timestamps so it's more readable.
+        Additionally, some metrics are rounded for readibility.
+        """
+        su_type, su_count, determining_resource = self.get_service_unit()
+        start_time = datetime.datetime.fromtimestamp(
+            self.start_time, datetime.UTC
+        ).strftime("%Y-%m-%dT%H:%M:%S")
+        end_time = datetime.datetime.fromtimestamp(
+            self.end_time, datetime.UTC
+        ).strftime("%Y-%m-%dT%H:%M:%S")
+        memory_request = self.memory_request.quantize(
+            Decimal(".0001"), rounding=ROUND_HALF_UP
+        )
+        runtime = self.get_runtime().quantize(Decimal(".0001"), rounding=ROUND_HALF_UP)
+        return [
+            self.namespace,
+            start_time,
+            end_time,
+            runtime,
+            self.pod_name,
+            self.cpu_request,
+            self.gpu_request,
+            self.gpu_type,
+            self.gpu_resource,
+            self.node_hostname,
+            self.node_model,
+            memory_request,
+            determining_resource,
+            su_type,
+            su_count,
+        ]
 
 
 @dataclass()
@@ -150,13 +191,7 @@ class ProjectInvoce:
 
     def add_pod(self, pod: Pod) -> None:
         """Aggregate a pods data"""
-        su_type, su_count, _ = Pod.get_service_unit(
-            cpu_count=pod.cpu_request,
-            memory_count=pod.memory_request,
-            gpu_count=pod.gpu_request,
-            gpu_type=pod.gpu_type,
-            gpu_resource=pod.gpu_resource,
-        )
+        su_type, su_count, _ = pod.get_service_unit()
         duration_in_hours = pod.get_runtime()
         self.su_hours[su_type] += su_count * duration_in_hours
 
