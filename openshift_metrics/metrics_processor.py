@@ -71,8 +71,8 @@ class MetricsProcessor:
             gpu_resource = metric["metric"].get("resource")
             node_model = metric["metric"].get("label_nvidia_com_gpu_machine")
 
-            # If GPU labels aren't found then try to determine the gpu type
-            # from the gpu node map file
+            # Sometimes GPU labels from the nodes can be missing, in that case
+            # we get the gpu_type from the gpu-node file
             if gpu_type == GPU_UNKNOWN_TYPE:
                 node_name = metric["metric"].get("node")
                 gpu_type = self.gpu_mapping.get(node_name, GPU_UNKNOWN_TYPE)
