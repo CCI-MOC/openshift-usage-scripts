@@ -6,9 +6,8 @@ import argparse
 from datetime import datetime
 import json
 
-import utils
-
-from metrics_processor import MetricsProcessor
+from openshift_metrics import utils
+from openshift_metrics.metrics_processor import MetricsProcessor
 
 def compare_dates(date_str1, date_str2):
     """Returns true is date1 is earlier than date2"""

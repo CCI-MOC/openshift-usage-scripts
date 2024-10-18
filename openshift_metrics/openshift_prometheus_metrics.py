@@ -15,12 +15,12 @@
 
 import argparse
 from datetime import datetime, timedelta
-from prometheus_client import PrometheusClient
 import os
 import sys
 import json
 
-import utils
+from openshift_metrics import utils
+from openshift_metrics.prometheus_client import PrometheusClient
 
 
 CPU_REQUEST = 'kube_pod_resource_request{unit="cores"} unless on(pod, namespace) kube_pod_status_unschedulable'

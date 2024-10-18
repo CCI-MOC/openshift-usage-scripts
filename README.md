@@ -28,7 +28,7 @@ endpoint. The first is through an environment variable:
 The second is directly on the command line:
 
 ```
-    $ python openshift-usage-scripts/openshift_prometheus_metrics.py --openshift-url <prometheus url>
+    $ python -m openshift-usage-scripts.openshift_prometheus_metrics --openshift-url <prometheus url>
 ```
 
 ### Collecting metrics
@@ -36,14 +36,14 @@ The second is directly on the command line:
 By default the script will pull data from the day before.
 
 ```
-   $ python openshift_metrics/openshift_prometheus_metrics.py \
+   $ python -m openshift_metrics.openshift_prometheus_metrics \
     --openshift-url https://thanos-querier-openshift-monitoring.apps.shift.nerc.mghpcc.org \
 ```
 
 You can specify a data range to collect metrics for a time period like this:
 
 ```
-    $ python openshift_metrics/openshift_prometheus_metrics.py \
+    $ python -m openshift_metrics.openshift_prometheus_metrics \
     --openshift-url https://thanos-querier-openshift-monitoring.apps.shift.nerc.mghpcc.org \
     --report-start-date 2022-03-01 \
     --report-end-date 2022-03-07 \
@@ -56,7 +56,7 @@ This will collect metrics from March 1st to March 7th, inclusive.
 You can generate the openshift usage report by passing it multiple metrics files
 
 ```
-   $ python openshift_metrics/merge.py \
+   $ python -m openshift_metrics.merge \
      metrics-2024-01-01-to-2024-01-07.json \
      metrics-2024-01-08-to-2024-01-14.json \
      metrics-2024-01-15-to-2024-01-16.json
@@ -67,7 +67,7 @@ This will merge the metrics and produce the openshift usage report of the period
 Output file name can be specified with the `--output-file` flags. You can also pass in a bunch of files like this:
 
 ```
-$ python openshift_metrics/merge.py data_2024_01/*.json
+$ python -m openshift_metrics.merge data_2024_01/*.json
 ```
 
 ## How It Works
