@@ -160,21 +160,23 @@ def main():
 
     if args.upload_to_s3:
         bucket_name = os.environ.get("S3_INVOICE_BUCKET", "nerc-invoicing")
+        cluster_name = os.environ.get("OPENSHIFT_CLUSTER_NAME")
+        assert cluster_name, "Please set OPENSHIFT_CLUSTER_NAME to upload to S3"
         primary_location = (
             f"Invoices/{report_month}/"
-            f"Service Invoices/NERC OpenShift {report_month}.csv"
+            f"Service Invoices/{cluster_name} {report_month}.csv"
         )
         utils.upload_to_s3(invoice_file, bucket_name, primary_location)
 
         timestamp = datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')
         secondary_location = (
             f"Invoices/{report_month}/"
-            f"Archive/NERC OpenShift {report_month} {timestamp}.csv"
+            f"Archive/{cluster_name} {report_month} {timestamp}.csv"
         )
         utils.upload_to_s3(invoice_file, bucket_name, secondary_location)
         pod_report_location = (
             f"Invoices/{report_month}/"
-            f"Archive/Pod-NERC OpenShift {report_month} {timestamp}.csv"
+            f"Archive/Pod-{cluster_name} {report_month} {timestamp}.csv"
         )
         utils.upload_to_s3(pod_report_file, bucket_name, pod_report_location)
 

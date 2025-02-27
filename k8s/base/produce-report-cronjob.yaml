@@ -12,6 +12,8 @@ spec:
           - name: daily-openshift-metrics-collector
             image: ghcr.io/cci-moc/openshift-usage-scripts:main
             env:
+            - name: OPENSHIFT_CLUSTER_NAME
+              value: nerc-ocp-prod
             - name: S3_OUTPUT_ACCESS_KEY_ID
               valueFrom:
                 secretKeyRef:
