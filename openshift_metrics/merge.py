@@ -69,6 +69,7 @@ def main():
     parser.add_argument("--rate-gpu-v100-su", type=Decimal)
     parser.add_argument("--rate-gpu-a100sxm4-su", type=Decimal)
     parser.add_argument("--rate-gpu-a100-su", type=Decimal)
+    parser.add_argument("--rate-gpu-h100-su", type=Decimal)
 
     args = parser.parse_args()
     files = args.files
@@ -115,13 +116,15 @@ def main():
             gpu_a100=Decimal(nerc_data.get_value_at("GPUA100 SU Rate", report_month)),
             gpu_a100sxm4=Decimal(nerc_data.get_value_at("GPUA100SXM4 SU Rate", report_month)),
             gpu_v100=Decimal(nerc_data.get_value_at("GPUV100 SU Rate", report_month)),
+            gpu_h100=Decimal(nerc_data.get_value_at("GPUH100 SU Rate", report_month)),
         )
     else:
         rates = invoice.Rates(
             cpu=Decimal(args.rate_cpu_su),
             gpu_a100=Decimal(args.rate_gpu_a100_su),
             gpu_a100sxm4=Decimal(args.rate_gpu_a100sxm4_su),
-            gpu_v100=Decimal(args.rate_gpu_v100_su)
+            gpu_v100=Decimal(args.rate_gpu_v100_su),
+            gpu_h100=Decimal(args.rate_gpu_h100_su),
         )
 
     if args.invoice_file:

@@ -9,6 +9,7 @@ import datetime
 GPU_A100 = "NVIDIA-A100-40GB"
 GPU_A100_SXM4 = "NVIDIA-A100-SXM4-40GB"
 GPU_V100 = "Tesla-V100-PCIE-32GB"
+GPU_H100 = "NVIDIA-H100-80GB-HBM3"
 GPU_UNKNOWN_TYPE = "GPU_UNKNOWN_TYPE"
 
 # GPU Resource - MIG Geometries
@@ -23,6 +24,7 @@ SU_CPU = "OpenShift CPU"
 SU_A100_GPU = "OpenShift GPUA100"
 SU_A100_SXM4_GPU = "OpenShift GPUA100SXM4"
 SU_V100_GPU = "OpenShift GPUV100"
+SU_H100_GPU = "OpenShift GPUH100"
 SU_UNKNOWN_GPU = "OpenShift Unknown GPU"
 SU_UNKNOWN_MIG_GPU = "OpenShift Unknown MIG GPU"
 SU_UNKNOWN = "Openshift Unknown"
@@ -65,6 +67,7 @@ class Pod:
             GPU_A100: SU_A100_GPU,
             GPU_A100_SXM4: SU_A100_SXM4_GPU,
             GPU_V100: SU_V100_GPU,
+            GPU_H100: SU_H100_GPU,
         }
 
         A100_SXM4_MIG = {
@@ -79,6 +82,7 @@ class Pod:
             SU_A100_GPU: {"gpu": 1, "cpu": 24, "ram": 74},
             SU_A100_SXM4_GPU: {"gpu": 1, "cpu": 31, "ram": 240},
             SU_V100_GPU: {"gpu": 1, "cpu": 48, "ram": 192},
+            SU_H100_GPU: {"gpu": 1, "cpu": 124, "ram": 360},
             SU_UNKNOWN_GPU: {"gpu": 1, "cpu": 8, "ram": 64},
             SU_UNKNOWN_MIG_GPU: {"gpu": 1, "cpu": 8, "ram": 64},
             SU_UNKNOWN: {"gpu": -1, "cpu": 1, "ram": 1},
@@ -179,6 +183,7 @@ class Rates:
     gpu_a100: Decimal
     gpu_a100sxm4: Decimal
     gpu_v100: Decimal
+    gpu_h100: Decimal
 
 
 @dataclass
@@ -201,6 +206,7 @@ class ProjectInvoce:
             SU_A100_GPU: 0,
             SU_A100_SXM4_GPU: 0,
             SU_V100_GPU: 0,
+            SU_H100_GPU: 0,
             SU_UNKNOWN_GPU: 0,
             SU_UNKNOWN_MIG_GPU: 0,
             SU_UNKNOWN: 0,
@@ -222,6 +228,8 @@ class ProjectInvoce:
             return self.rates.gpu_a100sxm4
         if su_type == SU_V100_GPU:
             return self.rates.gpu_v100
+        if su_type == SU_H100_GPU:
+            return self.rates.gpu_h100
         return Decimal(0)
 
     def generate_invoice_rows(self, report_month) -> List[str]:

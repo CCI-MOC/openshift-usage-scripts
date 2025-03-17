@@ -23,7 +23,8 @@ RATES = invoice.Rates(
     cpu = Decimal("0.013"),
     gpu_a100sxm4 = Decimal("2.078"),
     gpu_a100 = Decimal("1.803"),
-    gpu_v100 = Decimal("1.214")
+    gpu_v100 = Decimal("1.214"),
+    gpu_h100 = Decimal("6.04"),
     )
 
 class TestGetNamespaceAnnotations(TestCase):
@@ -564,6 +565,13 @@ class TestGetServiceUnit(TestCase):
         pod = self.make_pod(48, 192, 1, invoice.GPU_V100, invoice.WHOLE_GPU)
         su_type, su_count, determining_resource = pod.get_service_unit()
         self.assertEqual(su_type, invoice.SU_V100_GPU)
+        self.assertEqual(su_count, 1)
+        self.assertEqual(determining_resource, "GPU")
+
+    def test_known_gpu_H100(self):
+        pod = self.make_pod(124, 360, 1, invoice.GPU_H100, invoice.WHOLE_GPU)
+        su_type, su_count, determining_resource = pod.get_service_unit()
+        self.assertEqual(su_type, invoice.SU_H100_GPU)
         self.assertEqual(su_count, 1)
         self.assertEqual(determining_resource, "GPU")
 
