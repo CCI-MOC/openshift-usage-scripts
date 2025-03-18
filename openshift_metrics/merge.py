@@ -51,6 +51,10 @@ def main():
         help = "Name of the pod report file. Defaults to Pod NERC OpenShift <report_month>.csv"
     )
     parser.add_argument(
+        "--class-invoice-file",
+        help = "Name of the class report file. Defaults to NERC OpenShift Class <report_month>.csv"
+    )
+    parser.add_argument(
         "--upload-to-s3",
         action="store_true"
     )
@@ -132,6 +136,11 @@ def main():
     else:
         invoice_file = f"NERC OpenShift {report_month}.csv"
 
+    if args.class_invoice_file:
+        class_invoice_file = args.class_invoice_file
+    else:
+        class_invoice_file = f"NERC OpenShift Classes {report_month}.csv"
+
     if args.pod_report_file:
         pod_report_file = args.pod_report_file
     else:
@@ -153,7 +162,7 @@ def main():
     )
     utils.write_metrics_by_classes(
         condensed_metrics_dict=condensed_metrics_dict,
-        file_name=f"by-classes-{invoice_file}",
+        file_name=class_invoice_file,
         report_month=report_month,
         rates=rates,
         namespaces_with_classes=["rhods-notebooks"],
@@ -182,6 +191,11 @@ def main():
             f"Archive/Pod-{cluster_name} {report_month} {timestamp}.csv"
         )
         utils.upload_to_s3(pod_report_file, bucket_name, pod_report_location)
+        class_invoice_location = (
+            f"Invoices/{report_month}/"
+            f"Archive/Class-{cluster_name} {report_month} {timestamp}.csv"
+        )
+        utils.upload_to_s3(class_invoice_file, bucket_name, class_invoice_location)
 
 if __name__ == "__main__":
     main()
