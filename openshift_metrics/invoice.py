@@ -4,6 +4,7 @@ from collections import namedtuple
 from typing import List, Tuple, Optional
 from decimal import Decimal, ROUND_HALF_UP
 import datetime
+import nerc_rates
 
 # GPU types
 GPU_A100 = "NVIDIA-A100-40GB"
@@ -76,17 +77,26 @@ class Pod:
             MIG_3G_20GB: SU_UNKNOWN_MIG_GPU,
         }
 
-        # GPU count for some configs is -1 for math reasons, in reality it is 0
-        su_config = {
-            SU_CPU: {"gpu": -1, "cpu": 1, "ram": 4},
-            SU_A100_GPU: {"gpu": 1, "cpu": 24, "ram": 74},
-            SU_A100_SXM4_GPU: {"gpu": 1, "cpu": 31, "ram": 240},
-            SU_V100_GPU: {"gpu": 1, "cpu": 48, "ram": 192},
-            SU_H100_GPU: {"gpu": 1, "cpu": 124, "ram": 360},
-            SU_UNKNOWN_GPU: {"gpu": 1, "cpu": 8, "ram": 64},
-            SU_UNKNOWN_MIG_GPU: {"gpu": 1, "cpu": 8, "ram": 64},
-            SU_UNKNOWN: {"gpu": -1, "cpu": 1, "ram": 1},
-        }
+        current_month = datetime.datetime.now(datetime.UTC).strftime("%Y-%m")
+        su_config = {}
+        nerc_data = nerc_rates.load_from_url()
+        su_names = ["GPUV100", "GPUA100", "GPUA100SXM4", "GPUH100"]
+        resource_names = ["vCPUs", "RAM", "vGPUs"]
+        for su_name in su_names:
+            su_config.setdefault(f"OpenShift {su_name}", {})
+            for resource_name in resource_names:
+                su_config[f"OpenShift {su_name}"][resource_name] = nerc_data.get_value_at(
+                    f"{resource_name} in {su_name} SU", current_month
+                )
+        # CPU SU is gathered outside the loop because there's no GPU count available at nerc-rate
+        su_config.setdefault(f"OpenShift CPU", {})
+        su_config["OpenShift CPU"]["vCPUs"] = nerc_data.get_value_at("vCPUs in CPU SU", current_month)
+        su_config["OpenShift CPU"]["RAM"] = nerc_data.get_value_at("RAM in CPU SU", current_month)
+        su_config["OpenShift CPU"]["vGPUs"] = -1
+        # Some internal SUs that I like to map to when there's insufficient data
+        su_config[SU_UNKNOWN_GPU] = {"vGPUs": 1, "vCPUs": 8, "RAM": 64*1024}
+        su_config[SU_UNKNOWN_MIG_GPU] = {"vGPUs": 1, "vCPUs": 8, "RAM": 64*1024}
+        su_config[SU_UNKNOWN] = {"vGPUs": -1, "vCPUs": 1, "RAM": 1024}
 
         if self.gpu_resource is None and self.gpu_request == 0:
             su_type = SU_CPU
@@ -97,9 +107,9 @@ class Pod:
         else:
             return ServiceUnit(SU_UNKNOWN_GPU, 0, "GPU")
 
-        cpu_multiplier = self.cpu_request / su_config[su_type]["cpu"]
-        gpu_multiplier = self.gpu_request / su_config[su_type]["gpu"]
-        memory_multiplier = self.memory_request / su_config[su_type]["ram"]
+        cpu_multiplier = self.cpu_request / int(su_config[su_type]["vCPUs"])
+        gpu_multiplier = self.gpu_request / int(su_config[su_type]["vGPUs"])
+        memory_multiplier = self.memory_request / int((int(su_config[su_type]["RAM"])/1024))
 
         su_count = max(cpu_multiplier, gpu_multiplier, memory_multiplier)
 
