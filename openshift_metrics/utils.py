@@ -114,7 +114,7 @@ def csv_writer(rows, file_name):
         csvwriter.writerows(rows)
 
 
-def write_metrics_by_namespace(condensed_metrics_dict, file_name, report_month, rates, ignore_hours=None):
+def write_metrics_by_namespace(condensed_metrics_dict, file_name, report_month, rates, su_definitions, ignore_hours=None):
     """
     Process metrics dictionary to aggregate usage by namespace and then write that to a file
     """
@@ -154,6 +154,7 @@ def write_metrics_by_namespace(condensed_metrics_dict, file_name, report_month, 
                 intitution="",
                 institution_specific_code=cf_institution_code,
                 rates=rates,
+                su_definitions=su_definitions,
                 ignore_hours=ignore_hours,
             )
             invoices[namespace] = project_invoice
@@ -183,7 +184,7 @@ def write_metrics_by_namespace(condensed_metrics_dict, file_name, report_month, 
     csv_writer(rows, file_name)
 
 
-def write_metrics_by_pod(condensed_metrics_dict, file_name, ignore_hours=None):
+def write_metrics_by_pod(condensed_metrics_dict, file_name, su_definitions, ignore_hours=None):
     """
     Generates metrics report by pod.
     """
@@ -224,11 +225,11 @@ def write_metrics_by_pod(condensed_metrics_dict, file_name, ignore_hours=None):
                     node_hostname=pod_metric_dict.get("node", "Unknown Node"),
                     node_model=pod_metric_dict.get("node_model", "Unknown Model"),
                 )
-                rows.append(pod_obj.generate_pod_row(ignore_hours))
+                rows.append(pod_obj.generate_pod_row(ignore_hours, su_definitions))
 
     csv_writer(rows, file_name)
 
-def write_metrics_by_classes(condensed_metrics_dict, file_name, report_month, rates, namespaces_with_classes, ignore_hours=None):
+def write_metrics_by_classes(condensed_metrics_dict, file_name, report_month, rates, namespaces_with_classes, su_definitions, ignore_hours=None):
     """
     Process metrics dictionary to aggregate usage by the class label.
 
@@ -275,6 +276,7 @@ def write_metrics_by_classes(condensed_metrics_dict, file_name, report_month, ra
                     invoice_address="",
                     intitution="",
                     institution_specific_code="",
+                    su_definitions=su_definitions,
                     rates=rates,
                     ignore_hours=ignore_hours,
                 )
