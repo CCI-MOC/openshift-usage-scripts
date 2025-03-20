@@ -49,7 +49,7 @@ class Pod:
     node_hostname: str
     node_model: str
 
-    def get_service_unit(self) -> ServiceUnit:
+    def get_service_unit(self, su_definitions) -> ServiceUnit:
         """
         Returns the type of service unit, the count, and the determining resource
         """
@@ -77,27 +77,6 @@ class Pod:
             MIG_3G_20GB: SU_UNKNOWN_MIG_GPU,
         }
 
-        current_month = datetime.datetime.now(datetime.UTC).strftime("%Y-%m")
-        su_config = {}
-        nerc_data = nerc_rates.load_from_url()
-        su_names = ["GPUV100", "GPUA100", "GPUA100SXM4", "GPUH100"]
-        resource_names = ["vCPUs", "RAM", "vGPUs"]
-        for su_name in su_names:
-            su_config.setdefault(f"OpenShift {su_name}", {})
-            for resource_name in resource_names:
-                su_config[f"OpenShift {su_name}"][resource_name] = nerc_data.get_value_at(
-                    f"{resource_name} in {su_name} SU", current_month
-                )
-        # CPU SU is gathered outside the loop because there's no GPU count available at nerc-rate
-        su_config.setdefault(f"OpenShift CPU", {})
-        su_config["OpenShift CPU"]["vCPUs"] = nerc_data.get_value_at("vCPUs in CPU SU", current_month)
-        su_config["OpenShift CPU"]["RAM"] = nerc_data.get_value_at("RAM in CPU SU", current_month)
-        su_config["OpenShift CPU"]["vGPUs"] = -1
-        # Some internal SUs that I like to map to when there's insufficient data
-        su_config[SU_UNKNOWN_GPU] = {"vGPUs": 1, "vCPUs": 8, "RAM": 64*1024}
-        su_config[SU_UNKNOWN_MIG_GPU] = {"vGPUs": 1, "vCPUs": 8, "RAM": 64*1024}
-        su_config[SU_UNKNOWN] = {"vGPUs": -1, "vCPUs": 1, "RAM": 1024}
-
         if self.gpu_resource is None and self.gpu_request == 0:
             su_type = SU_CPU
         elif self.gpu_type is not None and self.gpu_resource == WHOLE_GPU:
@@ -107,9 +86,12 @@ class Pod:
         else:
             return ServiceUnit(SU_UNKNOWN_GPU, 0, "GPU")
 
-        cpu_multiplier = self.cpu_request / int(su_config[su_type]["vCPUs"])
-        gpu_multiplier = self.gpu_request / int(su_config[su_type]["vGPUs"])
-        memory_multiplier = self.memory_request / int((int(su_config[su_type]["RAM"])/1024))
+        cpu_multiplier = self.cpu_request / int(su_definitions[su_type]["vCPUs"])
+        memory_multiplier = self.memory_request / int((int(su_definitions[su_type]["RAM"])/1024))
+        if int(su_definitions[su_type]["vGPUs"]) != 0:
+            gpu_multiplier = self.gpu_request / int(su_definitions[su_type]["vGPUs"])
+        else:
+            gpu_multiplier = 0
 
         su_count = max(cpu_multiplier, gpu_multiplier, memory_multiplier)
 
@@ -151,13 +133,13 @@ class Pod:
     def end_time(self) -> int:
         return self.start_time + self.duration
 
-    def generate_pod_row(self, ignore_times):
+    def generate_pod_row(self, ignore_times, su_definitions):
         """
         This returns a row to represent pod data.
         It converts the epoch_time stamps to datetime timestamps so it's more readable.
         Additionally, some metrics are rounded for readibility.
         """
-        su_type, su_count, determining_resource = self.get_service_unit()
+        su_type, su_count, determining_resource = self.get_service_unit(su_definitions)
         start_time = datetime.datetime.fromtimestamp(
             self.start_time, datetime.UTC
         ).strftime("%Y-%m-%dT%H:%M:%S")
@@ -209,6 +191,7 @@ class ProjectInvoce:
     intitution: str
     institution_specific_code: str
     rates: Rates
+    su_definitions: dict
     ignore_hours: Optional[List[Tuple[datetime.datetime, datetime.datetime]]] = None
     su_hours: dict = field(
         default_factory=lambda: {
@@ -225,7 +208,7 @@ class ProjectInvoce:
 
     def add_pod(self, pod: Pod) -> None:
         """Aggregate a pods data"""
-        su_type, su_count, _ = pod.get_service_unit()
+        su_type, su_count, _ = pod.get_service_unit(self.su_definitions)
         duration_in_hours = pod.get_runtime(self.ignore_hours)
         self.su_hours[su_type] += su_count * duration_in_hours
 

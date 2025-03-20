@@ -15,7 +15,7 @@ import tempfile
 from unittest import TestCase, mock
 from decimal import Decimal
 
-from openshift_metrics import utils, invoice
+from openshift_metrics import utils, invoice, merge
 import os
 from datetime import datetime, UTC
 
@@ -26,6 +26,8 @@ RATES = invoice.Rates(
     gpu_v100 = Decimal("1.214"),
     gpu_h100 = Decimal("6.04"),
     )
+
+SU_DEFINITIONS = merge.get_su_definitions("2025-03")
 
 class TestGetNamespaceAnnotations(TestCase):
 
@@ -155,7 +157,7 @@ class TestWriteMetricsByPod(TestCase):
                            "namespace2,1970-01-01T00:00:00,1970-01-01T01:00:00,1.0000,pod4,0.5,0,,,Unknown Node,Unknown Model,2.0000,CPU,OpenShift CPU,0.5\n")
 
         with tempfile.NamedTemporaryFile(mode="w+") as tmp:
-            utils.write_metrics_by_pod(test_metrics_dict, tmp.name)
+            utils.write_metrics_by_pod(test_metrics_dict, tmp.name, SU_DEFINITIONS)
             self.assertEqual(tmp.read(), expected_output)
 
 
@@ -254,7 +256,8 @@ class TestWriteMetricsByNamespace(TestCase):
                 condensed_metrics_dict=test_metrics_dict,
                 file_name=tmp.name,
                 report_month="2023-01",
-                rates=RATES
+                rates=RATES,
+                su_definitions=SU_DEFINITIONS,
                 )
             self.assertEqual(tmp.read(), expected_output)
 
@@ -358,6 +361,7 @@ class TestWriteMetricsByClasses(TestCase):
                 file_name=tmp.name,
                 report_month="2023-01",
                 rates=RATES,
+                su_definitions=SU_DEFINITIONS,
                 namespaces_with_classes=["namespace2"]
                 )
             self.assertEqual(tmp.read(), expected_output)
@@ -407,6 +411,7 @@ class TestWriteMetricsByClasses(TestCase):
                 condensed_metrics_dict=test_metrics_dict,
                 file_name=tmp.name,
                 report_month="2023-01",
+                su_definitions=SU_DEFINITIONS,
                 rates=RATES
                 )
             self.assertEqual(tmp.read(), expected_output)
@@ -500,6 +505,7 @@ class TestWriteMetricsWithIgnoreHours(TestCase):
                 file_name=tmp.name,
                 report_month="2023-01",
                 rates=RATES,
+                su_definitions=SU_DEFINITIONS,
                 ignore_hours=self.ignore_times
             )
             self.assertEqual(tmp.read(), expected_output)
@@ -512,7 +518,11 @@ class TestWriteMetricsWithIgnoreHours(TestCase):
                            "namespace2,2024-04-10T11:00:00,2024-04-12T11:00:00,37.0000,pod3,24,1,NVIDIA-A100-SXM4-40GB,nvidia.com/gpu,Unknown Node,Unknown Model,8.0000,GPU,OpenShift GPUA100SXM4,1\n")
 
         with tempfile.NamedTemporaryFile(mode="w+") as tmp:
-            utils.write_metrics_by_pod(self.test_metrics_dict, tmp.name, self.ignore_times)
+            utils.write_metrics_by_pod(
+                self.test_metrics_dict,
+                tmp.name,
+                SU_DEFINITIONS,
+                self.ignore_times)
             self.assertEqual(tmp.read(), expected_output)
 
 class TestGetServiceUnit(TestCase):
@@ -542,133 +552,133 @@ class TestGetServiceUnit(TestCase):
 
     def test_cpu_only(self):
         pod = self.make_pod(4, 16, 0, None, None)
-        su_type, su_count, determining_resource = pod.get_service_unit()
+        su_type, su_count, determining_resource = pod.get_service_unit(SU_DEFINITIONS)
         self.assertEqual(su_type, invoice.SU_CPU)
         self.assertEqual(su_count, 4)
         self.assertEqual(determining_resource, "CPU")
 
     def test_known_gpu(self):
         pod = self.make_pod(24, 74, 1, invoice.GPU_A100, invoice.WHOLE_GPU)
-        su_type, su_count, determining_resource = pod.get_service_unit()
+        su_type, su_count, determining_resource = pod.get_service_unit(SU_DEFINITIONS)
         self.assertEqual(su_type, invoice.SU_A100_GPU)
         self.assertEqual(su_count, 1)
         self.assertEqual(determining_resource, "GPU")
 
     def test_known_gpu_A100_SXM4(self):
         pod = self.make_pod(31, 240, 1, invoice.GPU_A100_SXM4, invoice.WHOLE_GPU)
-        su_type, su_count, determining_resource = pod.get_service_unit()
+        su_type, su_count, determining_resource = pod.get_service_unit(SU_DEFINITIONS)
         self.assertEqual(su_type, invoice.SU_A100_SXM4_GPU)
         self.assertEqual(su_count, 1)
         self.assertEqual(determining_resource, "GPU")
 
     def test_known_gpu_V100(self):
         pod = self.make_pod(48, 192, 1, invoice.GPU_V100, invoice.WHOLE_GPU)
-        su_type, su_count, determining_resource = pod.get_service_unit()
+        su_type, su_count, determining_resource = pod.get_service_unit(SU_DEFINITIONS)
         self.assertEqual(su_type, invoice.SU_V100_GPU)
         self.assertEqual(su_count, 1)
         self.assertEqual(determining_resource, "GPU")
 
     def test_known_gpu_H100(self):
         pod = self.make_pod(124, 360, 1, invoice.GPU_H100, invoice.WHOLE_GPU)
-        su_type, su_count, determining_resource = pod.get_service_unit()
+        su_type, su_count, determining_resource = pod.get_service_unit(SU_DEFINITIONS)
         self.assertEqual(su_type, invoice.SU_H100_GPU)
         self.assertEqual(su_count, 1)
         self.assertEqual(determining_resource, "GPU")
 
     def test_known_gpu_high_cpu(self):
         pod = self.make_pod(50, 96, 1, invoice.GPU_A100, invoice.WHOLE_GPU)
-        su_type, su_count, determining_resource = pod.get_service_unit()
+        su_type, su_count, determining_resource = pod.get_service_unit(SU_DEFINITIONS)
         self.assertEqual(su_type, invoice.SU_A100_GPU)
         self.assertEqual(su_count, 3)
         self.assertEqual(determining_resource, "CPU")
 
     def test_known_gpu_high_memory(self):
         pod = self.make_pod(24, 100, 1, invoice.GPU_A100, invoice.WHOLE_GPU)
-        su_type, su_count, determining_resource = pod.get_service_unit()
+        su_type, su_count, determining_resource = pod.get_service_unit(SU_DEFINITIONS)
         self.assertEqual(su_type, invoice.SU_A100_GPU)
         self.assertEqual(su_count, 2)
         self.assertEqual(determining_resource, "RAM")
 
     def test_known_gpu_low_cpu_memory(self):
         pod = self.make_pod(2, 4, 1, invoice.GPU_A100, invoice.WHOLE_GPU)
-        su_type, su_count, determining_resource = pod.get_service_unit()
+        su_type, su_count, determining_resource = pod.get_service_unit(SU_DEFINITIONS)
         self.assertEqual(su_type, invoice.SU_A100_GPU)
         self.assertEqual(su_count, 1)
         self.assertEqual(determining_resource, "GPU")
 
     def test_unknown_gpu(self):
         pod = self.make_pod(8, 64, 1, "Unknown_GPU_Type", invoice.WHOLE_GPU)
-        su_type, su_count, determining_resource = pod.get_service_unit()
+        su_type, su_count, determining_resource = pod.get_service_unit(SU_DEFINITIONS)
         self.assertEqual(su_type, invoice.SU_UNKNOWN_GPU)
         self.assertEqual(su_count, 1)
         self.assertEqual(determining_resource, "GPU")
 
     def test_known_gpu_zero_count(self):
         pod = self.make_pod(8, 64, 0, invoice.GPU_A100, invoice.WHOLE_GPU)
-        su_type, su_count, determining_resource = pod.get_service_unit()
+        su_type, su_count, determining_resource = pod.get_service_unit(SU_DEFINITIONS)
         self.assertEqual(su_type, invoice.SU_UNKNOWN_GPU)
         self.assertEqual(su_count, 0)
         self.assertEqual(determining_resource, "GPU")
 
     def test_known_mig_gpu(self):
         pod = self.make_pod(1, 4, 1, invoice.GPU_A100_SXM4, invoice.MIG_1G_5GB)
-        su_type, su_count, determining_resource = pod.get_service_unit()
+        su_type, su_count, determining_resource = pod.get_service_unit(SU_DEFINITIONS)
         self.assertEqual(su_type, invoice.SU_UNKNOWN_MIG_GPU)
         self.assertEqual(su_count, 1)
         self.assertEqual(determining_resource, "GPU")
 
     def test_known_gpu_unknown_resource(self):
         pod = self.make_pod(1, 4, 1, invoice.GPU_A100, "nvidia.com/mig_20G_500GB")
-        su_type, su_count, determining_resource = pod.get_service_unit()
+        su_type, su_count, determining_resource = pod.get_service_unit(SU_DEFINITIONS)
         self.assertEqual(su_type, invoice.SU_UNKNOWN_GPU)
         self.assertEqual(su_count, 0)
         self.assertEqual(determining_resource, "GPU")
 
     def test_unknown_gpu_known_resource(self):
         pod = self.make_pod(1, 4, 1, "Unknown GPU", invoice.MIG_2G_10GB)
-        su_type, su_count, determining_resource = pod.get_service_unit()
+        su_type, su_count, determining_resource = pod.get_service_unit(SU_DEFINITIONS)
         self.assertEqual(su_type, invoice.SU_UNKNOWN_GPU)
         self.assertEqual(su_count, 0)
         self.assertEqual(determining_resource, "GPU")
 
     def test_zero_memory(self):
         pod = self.make_pod(1, 0, 0, None, None)
-        su_type, su_count, determining_resource = pod.get_service_unit()
+        su_type, su_count, determining_resource = pod.get_service_unit(SU_DEFINITIONS)
         self.assertEqual(su_type, invoice.SU_UNKNOWN)
         self.assertEqual(su_count, 0)
         self.assertEqual(determining_resource, "CPU")
 
     def test_zero_cpu(self):
         pod = self.make_pod(0, 1, 0, None, None)
-        su_type, su_count, determining_resource = pod.get_service_unit()
+        su_type, su_count, determining_resource = pod.get_service_unit(SU_DEFINITIONS)
         self.assertEqual(su_type, invoice.SU_UNKNOWN)
         self.assertEqual(su_count, 0)
         self.assertEqual(determining_resource, "CPU")
 
     def test_memory_dominant(self):
         pod = self.make_pod(8, 64, 0, None, None)
-        su_type, su_count, determining_resource = pod.get_service_unit()
+        su_type, su_count, determining_resource = pod.get_service_unit(SU_DEFINITIONS)
         self.assertEqual(su_type, invoice.SU_CPU)
         self.assertEqual(su_count, 16)
         self.assertEqual(determining_resource, "RAM")
 
     def test_fractional_su_cpu_dominant(self):
         pod = self.make_pod(0.5, 0.5, 0, None, None)
-        su_type, su_count, determining_resource = pod.get_service_unit()
+        su_type, su_count, determining_resource = pod.get_service_unit(SU_DEFINITIONS)
         self.assertEqual(su_type, invoice.SU_CPU)
         self.assertEqual(su_count, 0.5)
         self.assertEqual(determining_resource, "CPU")
 
     def test_fractional_su_memory_dominant(self):
         pod = self.make_pod(0.1, 1, 0, None, None)
-        su_type, su_count, determining_resource = pod.get_service_unit()
+        su_type, su_count, determining_resource = pod.get_service_unit(SU_DEFINITIONS)
         self.assertEqual(su_type, invoice.SU_CPU)
         self.assertEqual(su_count, 0.25)
         self.assertEqual(determining_resource, "RAM")
 
     def test_known_gpu_fractional_cpu_memory(self):
         pod = self.make_pod(0.8, 0.8, 1, invoice.GPU_A100, invoice.WHOLE_GPU)
-        su_type, su_count, determining_resource = pod.get_service_unit()
+        su_type, su_count, determining_resource = pod.get_service_unit(SU_DEFINITIONS)
         self.assertEqual(su_type, invoice.SU_A100_GPU)
         self.assertEqual(su_count, 1)
         self.assertEqual(determining_resource, "GPU")
@@ -676,7 +686,7 @@ class TestGetServiceUnit(TestCase):
     def test_decimal_return_type(self):
         from decimal import Decimal
         pod = self.make_pod(Decimal("1"), Decimal("8.1"), Decimal("0"), None, None)
-        _, su_count, _  = pod.get_service_unit()
+        _, su_count, _  = pod.get_service_unit(SU_DEFINITIONS)
         self.assertIsInstance(su_count, Decimal)
         self.assertEqual(su_count, Decimal('2.025'))
 
@@ -684,7 +694,7 @@ class TestGetServiceUnit(TestCase):
         from decimal import Decimal
         pod = self.make_pod(Decimal("1"), Decimal("76"), Decimal("1"), invoice.GPU_A100, invoice.WHOLE_GPU)
         # for GPU SUs, we always round up to the nearest integer
-        su_type, su_count, _ = pod.get_service_unit()
+        su_type, su_count, _ = pod.get_service_unit(SU_DEFINITIONS)
         self.assertIsInstance(su_count, int)
         self.assertEqual(su_count, 2)
         self.assertEqual(su_type, invoice.SU_A100_GPU)
