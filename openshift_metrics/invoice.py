@@ -4,7 +4,6 @@ from collections import namedtuple
 from typing import List, Tuple, Optional
 from decimal import Decimal, ROUND_HALF_UP
 import datetime
-import nerc_rates
 
 # GPU types
 GPU_A100 = "NVIDIA-A100-40GB"
