@@ -27,7 +27,7 @@ RATES = invoice.Rates(
     gpu_h100 = Decimal("6.04"),
     )
 
-SU_DEFINITIONS = merge.get_su_definitions("2025-03")
+SU_DEFINITIONS = merge.get_su_definitions("2025-04")
 
 class TestGetNamespaceAnnotations(TestCase):
 
