@@ -38,6 +38,23 @@ def parse_timestamp_range(timestamp_range: str) -> Tuple[datetime, datetime]:
             "Timestamp range must be in the format 'YYYY-MM-DDTHH:MM:SS,YYYY-MM-DDTHH:MM:SS'"
         )
 
+def get_su_definitions(report_month) -> dict:
+    su_definitions = {}
+    nerc_data = nerc_rates.load_from_url()
+    su_names = ["GPUV100", "GPUA100", "GPUA100SXM4", "GPUH100", "CPU"]
+    resource_names = ["vCPUs", "RAM", "vGPUs"]
+    for su_name in su_names:
+        su_definitions.setdefault(f"OpenShift {su_name}", {})
+        for resource_name in resource_names:
+            su_definitions[f"OpenShift {su_name}"][resource_name] = nerc_data.get_value_at(
+                f"{resource_name} in {su_name} SU", report_month
+            )
+    # Some internal SUs that I like to map to when there's insufficient data
+    su_definitions[invoice.SU_UNKNOWN_GPU] = {"vGPUs": 1, "vCPUs": 8, "RAM": 64*1024}
+    su_definitions[invoice.SU_UNKNOWN_MIG_GPU] = {"vGPUs": 1, "vCPUs": 8, "RAM": 64*1024}
+    su_definitions[invoice.SU_UNKNOWN] = {"vGPUs": 0, "vCPUs": 1, "RAM": 1024}
+    return su_definitions
+
 def main():
     """Reads the metrics from files and generates the reports"""
     parser = argparse.ArgumentParser()
@@ -153,11 +170,14 @@ def main():
     condensed_metrics_dict = processor.condense_metrics(
         ["cpu_request", "memory_request", "gpu_request", "gpu_type"]
     )
+
+    su_definitions = get_su_definitions(report_month)
     utils.write_metrics_by_namespace(
         condensed_metrics_dict=condensed_metrics_dict,
         file_name=invoice_file,
         report_month=report_month,
         rates=rates,
+        su_definitions=su_definitions,
         ignore_hours=ignore_hours,
     )
     utils.write_metrics_by_classes(
@@ -165,10 +185,16 @@ def main():
         file_name=class_invoice_file,
         report_month=report_month,
         rates=rates,
+        su_definitions=su_definitions,
         namespaces_with_classes=["rhods-notebooks"],
         ignore_hours=ignore_hours,
     )
-    utils.write_metrics_by_pod(condensed_metrics_dict, pod_report_file, ignore_hours)
+    utils.write_metrics_by_pod(
+        condensed_metrics_dict,
+        pod_report_file,
+        su_definitions,
+        ignore_hours,
+    )
 
     if args.upload_to_s3:
         bucket_name = os.environ.get("S3_INVOICE_BUCKET", "nerc-invoicing")
