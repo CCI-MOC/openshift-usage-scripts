@@ -27,8 +27,8 @@ from openshift_metrics.metrics_processor import MetricsProcessor
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-CPU_REQUEST = 'kube_pod_resource_request{unit="cores", node!=""} unless on(pod, namespace) kube_pod_status_unschedulable'
-MEMORY_REQUEST = 'kube_pod_resource_request{unit="bytes", node!=""} unless on(pod, namespace) kube_pod_status_unschedulable'
+CPU_REQUEST = 'kube_pod_resource_request{resource="cpu", node!=""} unless on(pod, namespace) kube_pod_status_unschedulable'
+MEMORY_REQUEST = 'kube_pod_resource_request{resource="memory", node!=""} unless on(pod, namespace) kube_pod_status_unschedulable'
 GPU_REQUEST = 'kube_pod_resource_request{resource=~"nvidia.com.*", node!=""} unless on(pod, namespace) kube_pod_status_unschedulable'
 KUBE_NODE_LABELS = 'kube_node_labels{label_nvidia_com_gpu_product!=""}'
 KUBE_POD_LABELS = 'kube_pod_labels{label_nerc_mghpcc_org_class!=""}'
