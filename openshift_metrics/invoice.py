@@ -19,6 +19,11 @@ MIG_2G_10GB = "nvidia.com/mig-2g.10gb"
 MIG_3G_20GB = "nvidia.com/mig-3g.20gb"
 WHOLE_GPU = "nvidia.com/gpu"
 
+# VM GPU Resources
+VM_GPU_H100 = "nvidia.com/H100_SXM5_80GB"
+VM_GPU_A100_SXM4 = "nvidia.com/A100_SXM4_40GB"
+VM_GPU_V100 = "nvidia.com/GV100GL_Tesla_V100"
+
 # SU Types
 SU_CPU = "OpenShift CPU"
 SU_A100_GPU = "OpenShift GPUA100"
@@ -80,6 +85,12 @@ class Pod:
             su_type = SU_CPU
         elif self.gpu_type is not None and self.gpu_resource == WHOLE_GPU:
             su_type = known_gpu_su.get(self.gpu_type, SU_UNKNOWN_GPU)
+        elif self.gpu_resource == VM_GPU_A100_SXM4:
+            su_type = SU_A100_SXM4_GPU
+        elif self.gpu_resource == VM_GPU_H100:
+            su_type = SU_H100_GPU
+        elif self.gpu_resource == VM_GPU_V100:
+            su_type = SU_V100_GPU
         elif self.gpu_type == GPU_A100_SXM4:  # for MIG GPU of type A100_SXM4
             su_type = A100_SXM4_MIG.get(self.gpu_resource, SU_UNKNOWN_MIG_GPU)
         else:

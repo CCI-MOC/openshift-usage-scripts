@@ -261,6 +261,57 @@ class TestWriteMetricsByNamespace(TestCase):
                 )
             self.assertEqual(tmp.read(), expected_output)
 
+    @mock.patch('openshift_metrics.utils.get_namespace_attributes')
+    def test_write_metrics_for_vms(self, mock_gna):
+        mock_gna.return_value = {
+            'namespace1': {
+                'cf_pi': 'PI1',
+                'cf_project_id': '123',
+                'institution_code': '76'
+            },
+        }
+        test_metrics_dict = {
+            "namespace1": {
+                "vm_pod1": {
+                    "metrics": {
+                        0: {
+                            "cpu_request": 2,
+                            "gpu_request": 1,
+                            "gpu_type": invoice.VM_GPU_A100_SXM4,
+                            "gpu_resource": invoice.VM_GPU_A100_SXM4,
+                            "memory_request": 4 * 2**30,
+                            "duration": 86400
+                        },
+                    }
+                },
+                "vm_pod2": {
+                    "metrics": {
+                        0: {
+                            "cpu_request": 4,
+                            "gpu_request": 1,
+                            "gpu_type": invoice.GPU_H100,
+                            "gpu_resource": invoice.VM_GPU_H100,
+                            "memory_request": 1 * 2**30,
+                            "duration": 86400
+                        },
+                    }
+                }
+            },
+        }
+
+        expected_output = ("Invoice Month,Project - Allocation,Project - Allocation ID,Manager (PI),Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost\n"
+                            "2023-01,namespace1,namespace1,PI1,,,,76,24,OpenShift GPUA100SXM4,2.078,49.87\n"
+                            "2023-01,namespace1,namespace1,PI1,,,,76,24,OpenShift GPUH100,6.04,144.96\n")
+
+        with tempfile.NamedTemporaryFile(mode="w+") as tmp:
+            utils.write_metrics_by_namespace(
+                condensed_metrics_dict=test_metrics_dict,
+                file_name=tmp.name,
+                report_month="2023-01",
+                rates=RATES,
+                su_definitions=SU_DEFINITIONS,
+                )
+            self.assertEqual(tmp.read(), expected_output)
 
 class TestWriteMetricsByClasses(TestCase):
 
@@ -698,3 +749,17 @@ class TestGetServiceUnit(TestCase):
         self.assertIsInstance(su_count, int)
         self.assertEqual(su_count, 2)
         self.assertEqual(su_type, invoice.SU_A100_GPU)
+
+    def test_vm_a100sxm4_gpu(self):
+        pod = self.make_pod(1, 4, 1, invoice.GPU_UNKNOWN_TYPE, invoice.VM_GPU_A100_SXM4)
+        su_type, su_count, determining_resource = pod.get_service_unit(SU_DEFINITIONS)
+        self.assertEqual(su_type, invoice.SU_A100_SXM4_GPU)
+        self.assertEqual(su_count, 1)
+        self.assertEqual(determining_resource, "GPU")
+
+    def test_vm_h100_gpu(self):
+        pod = self.make_pod(1, 4, 1, invoice.GPU_UNKNOWN_TYPE, invoice.VM_GPU_H100)
+        su_type, su_count, determining_resource = pod.get_service_unit(SU_DEFINITIONS)
+        self.assertEqual(su_type, invoice.SU_H100_GPU)
+        self.assertEqual(su_count, 1)
+        self.assertEqual(determining_resource, "GPU")
