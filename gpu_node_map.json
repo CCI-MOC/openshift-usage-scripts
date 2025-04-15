@@ -12,6 +12,9 @@
     "wrk-105": "Tesla-V100-PCIE-32GB",
     "wrk-106": "Tesla-V100-PCIE-32GB",
     "wrk-107": "Tesla-V100-PCIE-32GB",
-    "wrk-108": "Tesla-V100-PCIE-32GB"
+    "wrk-108": "Tesla-V100-PCIE-32GB",
+    "wrk-109": "NVIDIA-H100-80GB-HBM3",
+    "wrk-110": "NVIDIA-H100-80GB-HBM3",
+    "wrk-111": "NVIDIA-H100-80GB-HBM3",
+    "wrk-112": "NVIDIA-H100-80GB-HBM3"
 }
-
