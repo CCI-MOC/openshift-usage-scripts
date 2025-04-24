@@ -47,7 +47,7 @@ def get_su_definitions(report_month) -> dict:
         su_definitions.setdefault(f"OpenShift {su_name}", {})
         for resource_name in resource_names:
             su_definitions[f"OpenShift {su_name}"][resource_name] = nerc_data.get_value_at(
-                f"{resource_name} in {su_name} SU", report_month
+                f"{resource_name} in {su_name} SU", report_month, Decimal
             )
     # Some internal SUs that I like to map to when there's insufficient data
     su_definitions[invoice.SU_UNKNOWN_GPU] = {"vGPUs": 1, "vCPUs": 8, "RAM": 64*1024}
@@ -133,11 +133,11 @@ def main():
         logger.info("Using nerc rates.")
         nerc_data = nerc_rates.load_from_url()
         rates = invoice.Rates(
-            cpu=Decimal(nerc_data.get_value_at("CPU SU Rate", report_month)),
-            gpu_a100=Decimal(nerc_data.get_value_at("GPUA100 SU Rate", report_month)),
-            gpu_a100sxm4=Decimal(nerc_data.get_value_at("GPUA100SXM4 SU Rate", report_month)),
-            gpu_v100=Decimal(nerc_data.get_value_at("GPUV100 SU Rate", report_month)),
-            gpu_h100=Decimal(nerc_data.get_value_at("GPUH100 SU Rate", report_month)),
+            cpu=nerc_data.get_value_at("CPU SU Rate", report_month, Decimal),
+            gpu_a100=nerc_data.get_value_at("GPUA100 SU Rate", report_month, Decimal),
+            gpu_a100sxm4=nerc_data.get_value_at("GPUA100SXM4 SU Rate", report_month, Decimal),
+            gpu_v100=nerc_data.get_value_at("GPUV100 SU Rate", report_month, Decimal),
+            gpu_h100=nerc_data.get_value_at("GPUH100 SU Rate", report_month, Decimal),
         )
     else:
         rates = invoice.Rates(
