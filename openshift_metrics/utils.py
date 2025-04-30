@@ -15,7 +15,6 @@
 
 import os
 import csv
-import requests
 import boto3
 import logging
 
@@ -28,34 +27,6 @@ logger = logging.getLogger(__name__)
 
 class EmptyResultError(Exception):
     """Raise when no results are retrieved for a query"""
-
-
-class ColdFrontClient(object):
-
-    def __init__(self, keycloak_url, keycloak_client_id, keycloak_client_secret):
-        self.session = self.get_session(keycloak_url,
-                                        keycloak_client_id,
-                                        keycloak_client_secret)
-
-    @staticmethod
-    def get_session(keycloak_url, keycloak_client_id, keycloak_client_secret):
-        """Authenticate as a client with Keycloak to receive an access token."""
-        token_url = f"{keycloak_url}/auth/realms/mss/protocol/openid-connect/token"
-
-        r = requests.post(
-            token_url,
-            data={"grant_type": "client_credentials"},
-            auth=requests.auth.HTTPBasicAuth(keycloak_client_id, keycloak_client_secret),
-        )
-        client_token = r.json()["access_token"]
-
-        session = requests.session()
-        headers = {
-            "Authorization": f"Bearer {client_token}",
-            "Content-Type": "application/json",
-        }
-        session.headers.update(headers)
-        return session
 
 
 def upload_to_s3(file, bucket, location):
@@ -77,35 +48,6 @@ def upload_to_s3(file, bucket, location):
     response = s3.upload_file(file, Bucket=bucket, Key=location)
 
 
-def get_namespace_attributes():
-    """
-    Returns allocation attributes from coldfront associated
-    with all projects/namespaces.
-
-    Used for finding coldfront PI name and institution ID.
-    """
-    client = ColdFrontClient(
-        "https://keycloak.mss.mghpcc.org",
-        os.environ.get("CLIENT_ID"),
-        os.environ.get("CLIENT_SECRET")
-    )
-
-    coldfront_url = os.environ.get("COLDFRONT_URL",
-        "https://coldfront.mss.mghpcc.org/api/allocations?all=true")
-    responses = client.session.get(coldfront_url)
-
-    namespaces_dict = {}
-
-    for response in responses.json():
-        project_name = response["attributes"].get("Allocated Project Name")
-        cf_pi = response["project"].get("pi", project_name)
-        cf_project_id = response["project"].get("id", 0)
-        institution_code = response["attributes"].get("Institution-Specific Code", "")
-        namespaces_dict[project_name] = { "cf_pi": cf_pi, "cf_project_id": cf_project_id, "institution_code": institution_code }
-
-    return namespaces_dict
-
-
 def csv_writer(rows, file_name):
     """Writes rows as csv to file_name"""
     logger.info(f"Writing report to {file_name}")
@@ -120,7 +62,6 @@ def write_metrics_by_namespace(condensed_metrics_dict, file_name, report_month, 
     """
     invoices = {}
     rows = []
-    namespace_annotations = get_namespace_attributes()
     headers = [
         "Invoice Month",
         "Project - Allocation",
@@ -139,20 +80,17 @@ def write_metrics_by_namespace(condensed_metrics_dict, file_name, report_month, 
     rows.append(headers)
 
     for namespace, pods in condensed_metrics_dict.items():
-        namespace_annotation_dict = namespace_annotations.get(namespace, {})
-        cf_pi = namespace_annotation_dict.get("cf_pi")
-        cf_institution_code = namespace_annotation_dict.get("institution_code", "")
 
         if namespace not in invoices:
             project_invoice = invoice.ProjectInvoce(
                 invoice_month=report_month,
                 project=namespace,
                 project_id=namespace,
-                pi=cf_pi,
+                pi="",
                 invoice_email="",
                 invoice_address="",
                 intitution="",
-                institution_specific_code=cf_institution_code,
+                institution_specific_code="",
                 rates=rates,
                 su_definitions=su_definitions,
                 ignore_hours=ignore_hours,
