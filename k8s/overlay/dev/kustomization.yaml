@@ -3,5 +3,4 @@ resources:
   - openshift-metrics-b2-bucket.yaml
   - metrics-reader-token.yaml
   - nerc-invoices-b2-bucket.yaml
-  - keycloak-client.yaml
 namespace: xdmod-reader
