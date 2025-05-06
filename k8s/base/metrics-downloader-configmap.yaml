@@ -4,6 +4,11 @@ metadata:
   name: metrics-downloader
 data:
   script.sh: |
-    DIRECTORY_NAME=$(date --date="$(date +%Y-%m-15) -1 month" +'data_%Y-%m')
+    DAY_OF_MONTH=$(date +%d)
+    if [ "$DAY_OF_MONTH" -eq 1 ]; then
+      DIRECTORY_NAME=$(date --date="$(date +%Y-%m-15) -1 month" +'data_%Y-%m')
+    else
+      DIRECTORY_NAME=$(date +'data_%Y-%m')
+    fi
     echo $DIRECTORY_NAME
     aws s3 cp s3://openshift-metrics/$DIRECTORY_NAME/ /data --endpoint-url=https://s3.us-east-005.backblazeb2.com --recursive
