@@ -12,7 +12,6 @@ This was a fork of https://github.com/OCP-on-NERC/xdmod-openshift-scripts
 In order to run the scripts, you need to set the following environment variables:
 
 - `OPENSHIFT_TOKEN` for `openshift_prometheus_metrics.py` when collecting metrics from thanos/prometheus.
-- Keycloak `CLIENT_ID` and `CLIENT_SECRET`, `COLDFRONT_URL` (defaults to MGHPCC coldfront) for `merge.py`.
 
 We are using the token for `xdmod-reader` service account in `xdmod-reader` namespace on nerc-prod cluster. You can extract the token with:
 `oc get secrets -n xdmod-reader --as system:admin xdmod-reader-token-m6s2m -o yaml | yq .data.token -r |base64 -d` .
@@ -92,4 +91,3 @@ The script queries the following metrics:
    * GPU Requested by pods that are sheculed to run. The requested GPU resource must have the word "gpu" in it
    to be captured by this query. E.g. `nvidia.com/gpu`
 
-The script also retrieves further information through annotations.

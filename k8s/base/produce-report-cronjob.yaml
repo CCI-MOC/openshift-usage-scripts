@@ -24,16 +24,6 @@ spec:
                 secretKeyRef:
                   name: nerc-invoices-b2-bucket
                   key: secret-access-key
-            - name: CLIENT_ID
-              valueFrom:
-                secretKeyRef:
-                  name: keycloak-client
-                  key: client-id
-            - name: CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: keycloak-client
-                  key: client-secret
             volumeMounts:
             - name: data-volume
               mountPath: /data
