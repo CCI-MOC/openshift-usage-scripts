@@ -123,6 +123,9 @@ def main():
                 report_end_date = metrics_from_file["end_date"]
 
     logger.info(f"Generating report from {report_start_date} to {report_end_date}")
+    if ignore_hours:
+        for start_time, end_time in ignore_hours:
+            logger.info(f"{start_time} to {end_time} will be excluded from the invoice")
 
     report_start_date = datetime.strptime(report_start_date, "%Y-%m-%d")
     report_end_date = datetime.strptime(report_end_date, "%Y-%m-%d")
