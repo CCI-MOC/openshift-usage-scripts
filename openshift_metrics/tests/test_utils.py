@@ -10,28 +10,25 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 #
-from requests.exceptions import ConnectionError
 import tempfile
-from unittest import TestCase, mock
+from unittest import TestCase
 from decimal import Decimal
 
 from openshift_metrics import utils, invoice, merge
-import os
 from datetime import datetime, UTC
 
 RATES = invoice.Rates(
-    cpu = Decimal("0.013"),
-    gpu_a100sxm4 = Decimal("2.078"),
-    gpu_a100 = Decimal("1.803"),
-    gpu_v100 = Decimal("1.214"),
-    gpu_h100 = Decimal("6.04"),
-    )
+    cpu=Decimal("0.013"),
+    gpu_a100sxm4=Decimal("2.078"),
+    gpu_a100=Decimal("1.803"),
+    gpu_v100=Decimal("1.214"),
+    gpu_h100=Decimal("6.04"),
+)
 
 SU_DEFINITIONS = merge.get_su_definitions("2025-04")
 
 
 class TestWriteMetricsByPod(TestCase):
-
     def test_write_metrics_log(self):
         test_metrics_dict = {
             "namespace1": {
@@ -49,8 +46,8 @@ class TestWriteMetricsByPod(TestCase):
                             "memory_request": 1048576,
                             "duration": 60,
                             "node": "wrk-2",
-                            "node_model": "Lenovo"
-                        }
+                            "node_model": "Lenovo",
+                        },
                     }
                 },
                 "pod2": {
@@ -58,20 +55,20 @@ class TestWriteMetricsByPod(TestCase):
                         0: {
                             "cpu_request": 20,
                             "memory_request": 10485760,
-                            "duration": 60
+                            "duration": 60,
                         },
                         60: {
                             "cpu_request": 25,
                             "memory_request": 10485760,
-                            "duration": 60
+                            "duration": 60,
                         },
                         120: {
                             "cpu_request": 20,
                             "memory_request": 10485760,
-                            "duration": 60
-                        }
+                            "duration": 60,
+                        },
                     }
-                }
+                },
             },
             "namespace2": {
                 "pod3": {
@@ -79,30 +76,32 @@ class TestWriteMetricsByPod(TestCase):
                         0: {
                             "cpu_request": 45,
                             "memory_request": 104857600,
-                            "duration": 180
+                            "duration": 180,
                         },
                     }
                 },
-                "pod4": { # this results in 0.5 SU
+                "pod4": {  # this results in 0.5 SU
                     "metrics": {
                         0: {
                             "cpu_request": 0.5,
                             "memory_request": 2147483648,
-                            "duration": 3600
+                            "duration": 3600,
                         },
                     }
                 },
-            }
+            },
         }
 
-        expected_output = ("Namespace,Pod Start Time,Pod End Time,Duration (Hours),Pod Name,CPU Request,GPU Request,GPU Type,GPU Resource,Node,Node Model,Memory Request (GiB),Determining Resource,SU Type,SU Count\n"
-                           "namespace1,1970-01-01T00:00:00,1970-01-01T00:02:00,0.0333,pod1,10,0,,,wrk-1,Dell,0.0010,CPU,OpenShift CPU,10\n"
-                           "namespace1,1970-01-01T00:02:00,1970-01-01T00:03:00,0.0167,pod1,20,0,,,wrk-2,Lenovo,0.0010,CPU,OpenShift CPU,20\n"
-                           "namespace1,1970-01-01T00:00:00,1970-01-01T00:01:00,0.0167,pod2,20,0,,,Unknown Node,Unknown Model,0.0098,CPU,OpenShift CPU,20\n"
-                           "namespace1,1970-01-01T00:01:00,1970-01-01T00:02:00,0.0167,pod2,25,0,,,Unknown Node,Unknown Model,0.0098,CPU,OpenShift CPU,25\n"
-                           "namespace1,1970-01-01T00:02:00,1970-01-01T00:03:00,0.0167,pod2,20,0,,,Unknown Node,Unknown Model,0.0098,CPU,OpenShift CPU,20\n"
-                           "namespace2,1970-01-01T00:00:00,1970-01-01T00:03:00,0.0500,pod3,45,0,,,Unknown Node,Unknown Model,0.0977,CPU,OpenShift CPU,45\n"
-                           "namespace2,1970-01-01T00:00:00,1970-01-01T01:00:00,1.0000,pod4,0.5,0,,,Unknown Node,Unknown Model,2.0000,CPU,OpenShift CPU,0.5\n")
+        expected_output = (
+            "Namespace,Pod Start Time,Pod End Time,Duration (Hours),Pod Name,CPU Request,GPU Request,GPU Type,GPU Resource,Node,Node Model,Memory Request (GiB),Determining Resource,SU Type,SU Count\n"
+            "namespace1,1970-01-01T00:00:00,1970-01-01T00:02:00,0.0333,pod1,10,0,,,wrk-1,Dell,0.0010,CPU,OpenShift CPU,10\n"
+            "namespace1,1970-01-01T00:02:00,1970-01-01T00:03:00,0.0167,pod1,20,0,,,wrk-2,Lenovo,0.0010,CPU,OpenShift CPU,20\n"
+            "namespace1,1970-01-01T00:00:00,1970-01-01T00:01:00,0.0167,pod2,20,0,,,Unknown Node,Unknown Model,0.0098,CPU,OpenShift CPU,20\n"
+            "namespace1,1970-01-01T00:01:00,1970-01-01T00:02:00,0.0167,pod2,25,0,,,Unknown Node,Unknown Model,0.0098,CPU,OpenShift CPU,25\n"
+            "namespace1,1970-01-01T00:02:00,1970-01-01T00:03:00,0.0167,pod2,20,0,,,Unknown Node,Unknown Model,0.0098,CPU,OpenShift CPU,20\n"
+            "namespace2,1970-01-01T00:00:00,1970-01-01T00:03:00,0.0500,pod3,45,0,,,Unknown Node,Unknown Model,0.0977,CPU,OpenShift CPU,45\n"
+            "namespace2,1970-01-01T00:00:00,1970-01-01T01:00:00,1.0000,pod4,0.5,0,,,Unknown Node,Unknown Model,2.0000,CPU,OpenShift CPU,0.5\n"
+        )
 
         with tempfile.NamedTemporaryFile(mode="w+") as tmp:
             utils.write_metrics_by_pod(test_metrics_dict, tmp.name, SU_DEFINITIONS)
@@ -110,7 +109,6 @@ class TestWriteMetricsByPod(TestCase):
 
 
 class TestWriteMetricsByNamespace(TestCase):
-
     def test_write_metrics_log(self):
         test_metrics_dict = {
             "namespace1": {
@@ -119,13 +117,13 @@ class TestWriteMetricsByNamespace(TestCase):
                         0: {
                             "cpu_request": 2,
                             "memory_request": 4 * 2**30,
-                            "duration": 43200
+                            "duration": 43200,
                         },
                         43200: {
                             "cpu_request": 4,
                             "memory_request": 4 * 2**30,
-                            "duration": 43200
-                        }
+                            "duration": 43200,
+                        },
                     }
                 },
                 "pod2": {
@@ -133,15 +131,15 @@ class TestWriteMetricsByNamespace(TestCase):
                         0: {
                             "cpu_request": 4,
                             "memory_request": 1 * 2**30,
-                            "duration": 86400
+                            "duration": 86400,
                         },
                         86400: {
                             "cpu_request": 20,
                             "memory_request": 1 * 2**30,
-                            "duration": 172800
-                        }
+                            "duration": 172800,
+                        },
                     }
-                }
+                },
             },
             "namespace2": {
                 "pod3": {
@@ -149,7 +147,7 @@ class TestWriteMetricsByNamespace(TestCase):
                         0: {
                             "cpu_request": 1,
                             "memory_request": 8 * 2**30,
-                            "duration": 172800
+                            "duration": 172800,
                         },
                     }
                 },
@@ -161,7 +159,7 @@ class TestWriteMetricsByNamespace(TestCase):
                             "gpu_request": 1,
                             "gpu_type": invoice.GPU_A100,
                             "gpu_resource": invoice.WHOLE_GPU,
-                            "duration": 172700 # little under 48 hours, expect to be rounded up in the output
+                            "duration": 172700,  # little under 48 hours, expect to be rounded up in the output
                         },
                     }
                 },
@@ -174,18 +172,20 @@ class TestWriteMetricsByNamespace(TestCase):
                             "gpu_request": 1,
                             "gpu_type": invoice.GPU_A100_SXM4,
                             "gpu_resource": invoice.WHOLE_GPU,
-                            "duration": 172800
+                            "duration": 172800,
                         },
-                    }
+                    },
+                },
             },
-            }
         }
 
-        expected_output = ("Invoice Month,Project - Allocation,Project - Allocation ID,Manager (PI),Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost\n"
-                            "2023-01,namespace1,namespace1,,,,,,1128,OpenShift CPU,0.013,14.66\n"
-                            "2023-01,namespace2,namespace2,,,,,,96,OpenShift CPU,0.013,1.25\n"
-                            "2023-01,namespace2,namespace2,,,,,,48,OpenShift GPUA100,1.803,86.54\n"
-                            "2023-01,namespace2,namespace2,,,,,,48,OpenShift GPUA100SXM4,2.078,99.74\n")
+        expected_output = (
+            "Invoice Month,Project - Allocation,Project - Allocation ID,Manager (PI),Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost\n"
+            "2023-01,namespace1,namespace1,,,,,,1128,OpenShift CPU,0.013,14.66\n"
+            "2023-01,namespace2,namespace2,,,,,,96,OpenShift CPU,0.013,1.25\n"
+            "2023-01,namespace2,namespace2,,,,,,48,OpenShift GPUA100,1.803,86.54\n"
+            "2023-01,namespace2,namespace2,,,,,,48,OpenShift GPUA100SXM4,2.078,99.74\n"
+        )
 
         with tempfile.NamedTemporaryFile(mode="w+") as tmp:
             utils.write_metrics_by_namespace(
@@ -194,7 +194,7 @@ class TestWriteMetricsByNamespace(TestCase):
                 report_month="2023-01",
                 rates=RATES,
                 su_definitions=SU_DEFINITIONS,
-                )
+            )
             self.assertEqual(tmp.read(), expected_output)
 
     def test_write_metrics_for_vms(self):
@@ -208,7 +208,7 @@ class TestWriteMetricsByNamespace(TestCase):
                             "gpu_type": invoice.VM_GPU_A100_SXM4,
                             "gpu_resource": invoice.VM_GPU_A100_SXM4,
                             "memory_request": 4 * 2**30,
-                            "duration": 86400
+                            "duration": 86400,
                         },
                     }
                 },
@@ -220,16 +220,18 @@ class TestWriteMetricsByNamespace(TestCase):
                             "gpu_type": invoice.GPU_H100,
                             "gpu_resource": invoice.VM_GPU_H100,
                             "memory_request": 1 * 2**30,
-                            "duration": 86400
+                            "duration": 86400,
                         },
                     }
-                }
+                },
             },
         }
 
-        expected_output = ("Invoice Month,Project - Allocation,Project - Allocation ID,Manager (PI),Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost\n"
-                            "2023-01,namespace1,namespace1,,,,,,24,OpenShift GPUA100SXM4,2.078,49.87\n"
-                            "2023-01,namespace1,namespace1,,,,,,24,OpenShift GPUH100,6.04,144.96\n")
+        expected_output = (
+            "Invoice Month,Project - Allocation,Project - Allocation ID,Manager (PI),Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost\n"
+            "2023-01,namespace1,namespace1,,,,,,24,OpenShift GPUA100SXM4,2.078,49.87\n"
+            "2023-01,namespace1,namespace1,,,,,,24,OpenShift GPUH100,6.04,144.96\n"
+        )
 
         with tempfile.NamedTemporaryFile(mode="w+") as tmp:
             utils.write_metrics_by_namespace(
@@ -238,31 +240,31 @@ class TestWriteMetricsByNamespace(TestCase):
                 report_month="2023-01",
                 rates=RATES,
                 su_definitions=SU_DEFINITIONS,
-                )
+            )
             self.assertEqual(tmp.read(), expected_output)
 
-class TestWriteMetricsByClasses(TestCase):
 
+class TestWriteMetricsByClasses(TestCase):
     def test_write_metrics_log(self):
         test_metrics_dict = {
-            "namespace1": { # namespace is ignored entirely from the report
+            "namespace1": {  # namespace is ignored entirely from the report
                 "pod1": {
                     "metrics": {
                         0: {
                             "cpu_request": 2,
                             "memory_request": 4 * 2**30,
-                            "duration": 43200
+                            "duration": 43200,
                         },
                     }
                 },
             },
             "namespace2": {
-                "pod2": { # pod which doesn't belong to a class
+                "pod2": {  # pod which doesn't belong to a class
                     "metrics": {
                         0: {
                             "cpu_request": 1,
                             "memory_request": 8 * 2**30,
-                            "duration": 172800
+                            "duration": 172800,
                         },
                     }
                 },
@@ -272,9 +274,9 @@ class TestWriteMetricsByClasses(TestCase):
                         0: {
                             "cpu_request": 1,
                             "memory_request": 8 * 2**30,
-                            "duration": 86400
+                            "duration": 86400,
                         },
-                    }
+                    },
                 },
                 "pod4": {
                     "label_nerc_mghpcc_org_class": "math-201",
@@ -282,9 +284,9 @@ class TestWriteMetricsByClasses(TestCase):
                         0: {
                             "cpu_request": 2,
                             "memory_request": 8 * 2**30,
-                            "duration": 86400
+                            "duration": 86400,
                         },
-                    }
+                    },
                 },
                 "pod5": {
                     "label_nerc_mghpcc_org_class": "math-201",
@@ -295,9 +297,9 @@ class TestWriteMetricsByClasses(TestCase):
                             "gpu_request": 1,
                             "gpu_type": invoice.GPU_A100,
                             "gpu_resource": invoice.WHOLE_GPU,
-                            "duration": 86400
+                            "duration": 86400,
                         },
-                    }
+                    },
                 },
                 "pod6": {
                     "label_nerc_mghpcc_org_class": "cs-101",
@@ -309,18 +311,20 @@ class TestWriteMetricsByClasses(TestCase):
                             "gpu_request": 1,
                             "gpu_type": invoice.GPU_A100_SXM4,
                             "gpu_resource": invoice.WHOLE_GPU,
-                            "duration": 172800
+                            "duration": 172800,
                         },
-                    }
+                    },
+                },
             },
-            }
         }
 
-        expected_output = ("Invoice Month,Project - Allocation,Project - Allocation ID,Manager (PI),Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost\n"
-                            "2023-01,namespace2:noclass,namespace2:noclass,,,,,,96,OpenShift CPU,0.013,1.25\n"
-                            "2023-01,namespace2:math-201,namespace2:math-201,,,,,,96,OpenShift CPU,0.013,1.25\n"
-                            "2023-01,namespace2:math-201,namespace2:math-201,,,,,,24,OpenShift GPUA100,1.803,43.27\n"
-                            "2023-01,namespace2:cs-101,namespace2:cs-101,,,,,,48,OpenShift GPUA100SXM4,2.078,99.74\n")
+        expected_output = (
+            "Invoice Month,Project - Allocation,Project - Allocation ID,Manager (PI),Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost\n"
+            "2023-01,namespace2:noclass,namespace2:noclass,,,,,,96,OpenShift CPU,0.013,1.25\n"
+            "2023-01,namespace2:math-201,namespace2:math-201,,,,,,96,OpenShift CPU,0.013,1.25\n"
+            "2023-01,namespace2:math-201,namespace2:math-201,,,,,,24,OpenShift GPUA100,1.803,43.27\n"
+            "2023-01,namespace2:cs-101,namespace2:cs-101,,,,,,48,OpenShift GPUA100SXM4,2.078,99.74\n"
+        )
 
         with tempfile.NamedTemporaryFile(mode="w+") as tmp:
             utils.write_metrics_by_classes(
@@ -329,8 +333,8 @@ class TestWriteMetricsByClasses(TestCase):
                 report_month="2023-01",
                 rates=RATES,
                 su_definitions=SU_DEFINITIONS,
-                namespaces_with_classes=["namespace2"]
-                )
+                namespaces_with_classes=["namespace2"],
+            )
             self.assertEqual(tmp.read(), expected_output)
 
     def test_write_metrics_by_namespace_decimal(self):
@@ -341,7 +345,7 @@ class TestWriteMetricsByClasses(TestCase):
         which is then rounded down to 0.45.
         """
 
-        duration = 35 #hours
+        duration = 35  # hours
         rate = 0.013
 
         test_metrics_dict = {
@@ -352,18 +356,20 @@ class TestWriteMetricsByClasses(TestCase):
                         0: {
                             "cpu_request": 1,
                             "memory_request": 4 * 2**30,
-                            "duration": 35*3600
+                            "duration": 35 * 3600,
                         },
-                    }
+                    },
                 }
             }
         }
 
-        cost = round(duration*rate,2)
+        cost = round(duration * rate, 2)
         self.assertEqual(cost, 0.45)
 
-        expected_output = ("Invoice Month,Project - Allocation,Project - Allocation ID,Manager (PI),Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost\n"
-                            "2023-01,namespace1,namespace1,,,,,,35,OpenShift CPU,0.013,0.46\n")
+        expected_output = (
+            "Invoice Month,Project - Allocation,Project - Allocation ID,Manager (PI),Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost\n"
+            "2023-01,namespace1,namespace1,,,,,,35,OpenShift CPU,0.013,0.46\n"
+        )
 
         with tempfile.NamedTemporaryFile(mode="w+") as tmp:
             utils.write_metrics_by_namespace(
@@ -371,8 +377,8 @@ class TestWriteMetricsByClasses(TestCase):
                 file_name=tmp.name,
                 report_month="2023-01",
                 su_definitions=SU_DEFINITIONS,
-                rates=RATES
-                )
+                rates=RATES,
+            )
             self.assertEqual(tmp.read(), expected_output)
 
 
@@ -381,8 +387,6 @@ class TestWriteMetricsWithIgnoreHours(TestCase):
         """Creates a test dictionary with condensed data that can be used to test WriteMetricsByPod and WriteMetricsByNamespace"""
         start_dt = int(datetime.fromisoformat("2024-04-10T11:00:00Z").timestamp())
 
-
-
         self.ignore_times = [
             (
                 datetime(2024, 4, 9, 11, 0, 0, tzinfo=UTC),
@@ -390,7 +394,7 @@ class TestWriteMetricsWithIgnoreHours(TestCase):
             ),
             (
                 datetime(2024, 4, 10, 22, 0, 0, tzinfo=UTC),
-                datetime(2024, 4, 11, 5, 0, 0, tzinfo=UTC)
+                datetime(2024, 4, 11, 5, 0, 0, tzinfo=UTC),
             ),
         ]
         HOUR = 60 * 60
@@ -414,7 +418,9 @@ class TestWriteMetricsWithIgnoreHours(TestCase):
                             "memory_request": 4 * 2**30,
                             "duration": 24 * HOUR,
                         },
-                        start_dt + 24 * HOUR: {  # runs from 2024-04-11T11:00:00Z to 2024-04-13T11:00:00Z - 3 SU * 48 billable hours
+                        start_dt
+                        + 24
+                        * HOUR: {  # runs from 2024-04-11T11:00:00Z to 2024-04-13T11:00:00Z - 3 SU * 48 billable hours
                             "cpu_request": 3,
                             "memory_request": 4 * 2**30,
                             "duration": 48 * HOUR,
@@ -452,36 +458,30 @@ class TestWriteMetricsWithIgnoreHours(TestCase):
                 report_month="2023-01",
                 rates=RATES,
                 su_definitions=SU_DEFINITIONS,
-                ignore_hours=self.ignore_times
+                ignore_hours=self.ignore_times,
             )
             self.assertEqual(tmp.read(), expected_output)
 
     def test_write_metrics_by_pod_with_ignore_hours(self):
-        expected_output = ("Namespace,Pod Start Time,Pod End Time,Duration (Hours),Pod Name,CPU Request,GPU Request,GPU Type,GPU Resource,Node,Node Model,Memory Request (GiB),Determining Resource,SU Type,SU Count\n"
-                           "namespace1,2024-04-10T11:00:00,2024-04-10T21:00:00,6.0000,pod1,2,0,,,Unknown Node,Unknown Model,4.0000,CPU,OpenShift CPU,2\n"
-                           "namespace2,2024-04-10T11:00:00,2024-04-11T11:00:00,13.0000,pod2,2,0,,,Unknown Node,Unknown Model,4.0000,CPU,OpenShift CPU,2\n"
-                           "namespace2,2024-04-11T11:00:00,2024-04-13T11:00:00,48.0000,pod2,3,0,,,Unknown Node,Unknown Model,4.0000,CPU,OpenShift CPU,3\n"
-                           "namespace2,2024-04-10T11:00:00,2024-04-12T11:00:00,37.0000,pod3,24,1,NVIDIA-A100-SXM4-40GB,nvidia.com/gpu,Unknown Node,Unknown Model,8.0000,GPU,OpenShift GPUA100SXM4,1\n")
+        expected_output = (
+            "Namespace,Pod Start Time,Pod End Time,Duration (Hours),Pod Name,CPU Request,GPU Request,GPU Type,GPU Resource,Node,Node Model,Memory Request (GiB),Determining Resource,SU Type,SU Count\n"
+            "namespace1,2024-04-10T11:00:00,2024-04-10T21:00:00,6.0000,pod1,2,0,,,Unknown Node,Unknown Model,4.0000,CPU,OpenShift CPU,2\n"
+            "namespace2,2024-04-10T11:00:00,2024-04-11T11:00:00,13.0000,pod2,2,0,,,Unknown Node,Unknown Model,4.0000,CPU,OpenShift CPU,2\n"
+            "namespace2,2024-04-11T11:00:00,2024-04-13T11:00:00,48.0000,pod2,3,0,,,Unknown Node,Unknown Model,4.0000,CPU,OpenShift CPU,3\n"
+            "namespace2,2024-04-10T11:00:00,2024-04-12T11:00:00,37.0000,pod3,24,1,NVIDIA-A100-SXM4-40GB,nvidia.com/gpu,Unknown Node,Unknown Model,8.0000,GPU,OpenShift GPUA100SXM4,1\n"
+        )
 
         with tempfile.NamedTemporaryFile(mode="w+") as tmp:
             utils.write_metrics_by_pod(
-                self.test_metrics_dict,
-                tmp.name,
-                SU_DEFINITIONS,
-                self.ignore_times)
+                self.test_metrics_dict, tmp.name, SU_DEFINITIONS, self.ignore_times
+            )
             self.assertEqual(tmp.read(), expected_output)
 
+
 class TestGetServiceUnit(TestCase):
-
     def make_pod(
-            self,
-            cpu_request,
-            memory_request,
-            gpu_request,
-            gpu_type,
-            gpu_resource
-        ):
-
+        self, cpu_request, memory_request, gpu_request, gpu_type, gpu_resource
+    ):
         return invoice.Pod(
             pod_name="pod1",
             namespace="namespace1",
@@ -493,7 +493,7 @@ class TestGetServiceUnit(TestCase):
             gpu_type=gpu_type,
             gpu_resource=gpu_resource,
             node_hostname="node-1",
-            node_model="model-1"
+            node_model="model-1",
         )
 
     def test_cpu_only(self):
@@ -631,14 +631,22 @@ class TestGetServiceUnit(TestCase):
 
     def test_decimal_return_type(self):
         from decimal import Decimal
+
         pod = self.make_pod(Decimal("1"), Decimal("8.1"), Decimal("0"), None, None)
-        _, su_count, _  = pod.get_service_unit(SU_DEFINITIONS)
+        _, su_count, _ = pod.get_service_unit(SU_DEFINITIONS)
         self.assertIsInstance(su_count, Decimal)
-        self.assertEqual(su_count, Decimal('2.025'))
+        self.assertEqual(su_count, Decimal("2.025"))
 
     def test_not_decimal_return_type_when_gpu_su_type(self):
         from decimal import Decimal
-        pod = self.make_pod(Decimal("1"), Decimal("76"), Decimal("1"), invoice.GPU_A100, invoice.WHOLE_GPU)
+
+        pod = self.make_pod(
+            Decimal("1"),
+            Decimal("76"),
+            Decimal("1"),
+            invoice.GPU_A100,
+            invoice.WHOLE_GPU,
+        )
         # for GPU SUs, we always round up to the nearest integer
         su_type, su_count, _ = pod.get_service_unit(SU_DEFINITIONS)
         self.assertIsInstance(su_count, int)

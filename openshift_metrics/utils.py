@@ -30,14 +30,17 @@ class EmptyResultError(Exception):
 
 
 def upload_to_s3(file, bucket, location):
-    s3_endpoint = os.getenv("S3_OUTPUT_ENDPOINT_URL",
-                            "https://s3.us-east-005.backblazeb2.com")
+    s3_endpoint = os.getenv(
+        "S3_OUTPUT_ENDPOINT_URL", "https://s3.us-east-005.backblazeb2.com"
+    )
     s3_key_id = os.getenv("S3_OUTPUT_ACCESS_KEY_ID")
     s3_secret = os.getenv("S3_OUTPUT_SECRET_ACCESS_KEY")
 
     if not s3_key_id or not s3_secret:
-        raise Exception("Must provide S3_OUTPUT_ACCESS_KEY_ID and"
-                        " S3_OUTPUT_SECRET_ACCESS_KEY environment variables.")
+        raise Exception(
+            "Must provide S3_OUTPUT_ACCESS_KEY_ID and"
+            " S3_OUTPUT_SECRET_ACCESS_KEY environment variables."
+        )
     s3 = boto3.client(
         "s3",
         endpoint_url=s3_endpoint,
@@ -45,7 +48,7 @@ def upload_to_s3(file, bucket, location):
         aws_secret_access_key=s3_secret,
     )
     logger.info(f"Uploading {file} to s3://{bucket}/{location}")
-    response = s3.upload_file(file, Bucket=bucket, Key=location)
+    s3.upload_file(file, Bucket=bucket, Key=location)
 
 
 def csv_writer(rows, file_name):
@@ -56,7 +59,14 @@ def csv_writer(rows, file_name):
         csvwriter.writerows(rows)
 
 
-def write_metrics_by_namespace(condensed_metrics_dict, file_name, report_month, rates, su_definitions, ignore_hours=None):
+def write_metrics_by_namespace(
+    condensed_metrics_dict,
+    file_name,
+    report_month,
+    rates,
+    su_definitions,
+    ignore_hours=None,
+):
     """
     Process metrics dictionary to aggregate usage by namespace and then write that to a file
     """
@@ -80,7 +90,6 @@ def write_metrics_by_namespace(condensed_metrics_dict, file_name, report_month, 
     rows.append(headers)
 
     for namespace, pods in condensed_metrics_dict.items():
-
         if namespace not in invoices:
             project_invoice = invoice.ProjectInvoce(
                 invoice_month=report_month,
@@ -108,7 +117,8 @@ def write_metrics_by_namespace(condensed_metrics_dict, file_name, report_month, 
                     duration=pod_metric_dict["duration"],
                     cpu_request=Decimal(pod_metric_dict.get("cpu_request", 0)),
                     gpu_request=Decimal(pod_metric_dict.get("gpu_request", 0)),
-                    memory_request=Decimal(pod_metric_dict.get("memory_request", 0)) / 2**30,
+                    memory_request=Decimal(pod_metric_dict.get("memory_request", 0))
+                    / 2**30,
                     gpu_type=pod_metric_dict.get("gpu_type"),
                     gpu_resource=pod_metric_dict.get("gpu_resource"),
                     node_hostname=pod_metric_dict.get("node"),
@@ -122,7 +132,9 @@ def write_metrics_by_namespace(condensed_metrics_dict, file_name, report_month, 
     csv_writer(rows, file_name)
 
 
-def write_metrics_by_pod(condensed_metrics_dict, file_name, su_definitions, ignore_hours=None):
+def write_metrics_by_pod(
+    condensed_metrics_dict, file_name, su_definitions, ignore_hours=None
+):
     """
     Generates metrics report by pod.
     """
@@ -157,7 +169,8 @@ def write_metrics_by_pod(condensed_metrics_dict, file_name, su_definitions, igno
                     duration=pod_metric_dict["duration"],
                     cpu_request=Decimal(pod_metric_dict.get("cpu_request", 0)),
                     gpu_request=Decimal(pod_metric_dict.get("gpu_request", 0)),
-                    memory_request=Decimal(pod_metric_dict.get("memory_request", 0)) / 2**30,
+                    memory_request=Decimal(pod_metric_dict.get("memory_request", 0))
+                    / 2**30,
                     gpu_type=pod_metric_dict.get("gpu_type"),
                     gpu_resource=pod_metric_dict.get("gpu_resource"),
                     node_hostname=pod_metric_dict.get("node", "Unknown Node"),
@@ -167,7 +180,16 @@ def write_metrics_by_pod(condensed_metrics_dict, file_name, su_definitions, igno
 
     csv_writer(rows, file_name)
 
-def write_metrics_by_classes(condensed_metrics_dict, file_name, report_month, rates, namespaces_with_classes, su_definitions, ignore_hours=None):
+
+def write_metrics_by_classes(
+    condensed_metrics_dict,
+    file_name,
+    report_month,
+    rates,
+    namespaces_with_classes,
+    su_definitions,
+    ignore_hours=None,
+):
     """
     Process metrics dictionary to aggregate usage by the class label.
 
@@ -229,7 +251,8 @@ def write_metrics_by_classes(condensed_metrics_dict, file_name, report_month, ra
                     duration=pod_metric_dict["duration"],
                     cpu_request=Decimal(pod_metric_dict.get("cpu_request", 0)),
                     gpu_request=Decimal(pod_metric_dict.get("gpu_request", 0)),
-                    memory_request=Decimal(pod_metric_dict.get("memory_request", 0)) / 2**30,
+                    memory_request=Decimal(pod_metric_dict.get("memory_request", 0))
+                    / 2**30,
                     gpu_type=pod_metric_dict.get("gpu_type"),
                     gpu_resource=pod_metric_dict.get("gpu_resource"),
                     node_hostname=pod_metric_dict.get("node"),
