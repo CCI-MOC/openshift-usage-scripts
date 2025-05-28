@@ -196,6 +196,7 @@ class ProjectInvoce:
     project: str
     project_id: str
     pi: str
+    cluster_name: str
     invoice_email: str
     invoice_address: str
     intitution: str
@@ -247,6 +248,7 @@ class ProjectInvoce:
                     self.project,
                     self.project_id,
                     self.pi,
+                    self.cluster_name,
                     self.invoice_email,
                     self.invoice_address,
                     self.intitution,

@@ -104,6 +104,7 @@ def main():
     for file in files:
         with open(file, "r") as jsonfile:
             metrics_from_file = json.load(jsonfile)
+            cluster_name = metrics_from_file["cluster_name"]
             cpu_request_metrics = metrics_from_file["cpu_metrics"]
             memory_request_metrics = metrics_from_file["memory_metrics"]
             gpu_request_metrics = metrics_from_file.get("gpu_metrics", None)
@@ -181,6 +182,7 @@ def main():
         report_month=report_month,
         rates=rates,
         su_definitions=su_definitions,
+        cluster_name=cluster_name,
         ignore_hours=ignore_hours,
     )
     utils.write_metrics_by_classes(
@@ -189,6 +191,7 @@ def main():
         report_month=report_month,
         rates=rates,
         su_definitions=su_definitions,
+        cluster_name=cluster_name,
         namespaces_with_classes=["rhods-notebooks"],
         ignore_hours=ignore_hours,
     )
@@ -201,8 +204,6 @@ def main():
 
     if args.upload_to_s3:
         bucket_name = os.environ.get("S3_INVOICE_BUCKET", "nerc-invoicing")
-        cluster_name = os.environ.get("OPENSHIFT_CLUSTER_NAME")
-        assert cluster_name, "Please set OPENSHIFT_CLUSTER_NAME to upload to S3"
         primary_location = (
             f"Invoices/{report_month}/"
             f"Service Invoices/{cluster_name} {report_month}.csv"

@@ -181,11 +181,11 @@ class TestWriteMetricsByNamespace(TestCase):
             }
         }
 
-        expected_output = ("Invoice Month,Project - Allocation,Project - Allocation ID,Manager (PI),Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost\n"
-                            "2023-01,namespace1,namespace1,,,,,,1128,OpenShift CPU,0.013,14.66\n"
-                            "2023-01,namespace2,namespace2,,,,,,96,OpenShift CPU,0.013,1.25\n"
-                            "2023-01,namespace2,namespace2,,,,,,48,OpenShift GPUA100,1.803,86.54\n"
-                            "2023-01,namespace2,namespace2,,,,,,48,OpenShift GPUA100SXM4,2.078,99.74\n")
+        expected_output = ("Invoice Month,Project - Allocation,Project - Allocation ID,Manager (PI),Cluster Name,Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost\n"
+                            "2023-01,namespace1,namespace1,,test-cluster,,,,,1128,OpenShift CPU,0.013,14.66\n"
+                            "2023-01,namespace2,namespace2,,test-cluster,,,,,96,OpenShift CPU,0.013,1.25\n"
+                            "2023-01,namespace2,namespace2,,test-cluster,,,,,48,OpenShift GPUA100,1.803,86.54\n"
+                            "2023-01,namespace2,namespace2,,test-cluster,,,,,48,OpenShift GPUA100SXM4,2.078,99.74\n")
 
         with tempfile.NamedTemporaryFile(mode="w+") as tmp:
             utils.write_metrics_by_namespace(
@@ -194,6 +194,7 @@ class TestWriteMetricsByNamespace(TestCase):
                 report_month="2023-01",
                 rates=RATES,
                 su_definitions=SU_DEFINITIONS,
+                cluster_name="test-cluster",
                 )
             self.assertEqual(tmp.read(), expected_output)
 
@@ -227,9 +228,9 @@ class TestWriteMetricsByNamespace(TestCase):
             },
         }
 
-        expected_output = ("Invoice Month,Project - Allocation,Project - Allocation ID,Manager (PI),Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost\n"
-                            "2023-01,namespace1,namespace1,,,,,,24,OpenShift GPUA100SXM4,2.078,49.87\n"
-                            "2023-01,namespace1,namespace1,,,,,,24,OpenShift GPUH100,6.04,144.96\n")
+        expected_output = ("Invoice Month,Project - Allocation,Project - Allocation ID,Manager (PI),Cluster Name,Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost\n"
+                            "2023-01,namespace1,namespace1,,test-cluster,,,,,24,OpenShift GPUA100SXM4,2.078,49.87\n"
+                            "2023-01,namespace1,namespace1,,test-cluster,,,,,24,OpenShift GPUH100,6.04,144.96\n")
 
         with tempfile.NamedTemporaryFile(mode="w+") as tmp:
             utils.write_metrics_by_namespace(
@@ -238,6 +239,7 @@ class TestWriteMetricsByNamespace(TestCase):
                 report_month="2023-01",
                 rates=RATES,
                 su_definitions=SU_DEFINITIONS,
+                cluster_name="test-cluster",
                 )
             self.assertEqual(tmp.read(), expected_output)
 
@@ -316,11 +318,11 @@ class TestWriteMetricsByClasses(TestCase):
             }
         }
 
-        expected_output = ("Invoice Month,Project - Allocation,Project - Allocation ID,Manager (PI),Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost\n"
-                            "2023-01,namespace2:noclass,namespace2:noclass,,,,,,96,OpenShift CPU,0.013,1.25\n"
-                            "2023-01,namespace2:math-201,namespace2:math-201,,,,,,96,OpenShift CPU,0.013,1.25\n"
-                            "2023-01,namespace2:math-201,namespace2:math-201,,,,,,24,OpenShift GPUA100,1.803,43.27\n"
-                            "2023-01,namespace2:cs-101,namespace2:cs-101,,,,,,48,OpenShift GPUA100SXM4,2.078,99.74\n")
+        expected_output = ("Invoice Month,Project - Allocation,Project - Allocation ID,Manager (PI),Cluster Name,Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost\n"
+                            "2023-01,namespace2:noclass,namespace2:noclass,,test-cluster,,,,,96,OpenShift CPU,0.013,1.25\n"
+                            "2023-01,namespace2:math-201,namespace2:math-201,,test-cluster,,,,,96,OpenShift CPU,0.013,1.25\n"
+                            "2023-01,namespace2:math-201,namespace2:math-201,,test-cluster,,,,,24,OpenShift GPUA100,1.803,43.27\n"
+                            "2023-01,namespace2:cs-101,namespace2:cs-101,,test-cluster,,,,,48,OpenShift GPUA100SXM4,2.078,99.74\n")
 
         with tempfile.NamedTemporaryFile(mode="w+") as tmp:
             utils.write_metrics_by_classes(
@@ -329,7 +331,8 @@ class TestWriteMetricsByClasses(TestCase):
                 report_month="2023-01",
                 rates=RATES,
                 su_definitions=SU_DEFINITIONS,
-                namespaces_with_classes=["namespace2"]
+                namespaces_with_classes=["namespace2"],
+                cluster_name="test-cluster",
                 )
             self.assertEqual(tmp.read(), expected_output)
 
@@ -362,8 +365,8 @@ class TestWriteMetricsByClasses(TestCase):
         cost = round(duration*rate,2)
         self.assertEqual(cost, 0.45)
 
-        expected_output = ("Invoice Month,Project - Allocation,Project - Allocation ID,Manager (PI),Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost\n"
-                            "2023-01,namespace1,namespace1,,,,,,35,OpenShift CPU,0.013,0.46\n")
+        expected_output = ("Invoice Month,Project - Allocation,Project - Allocation ID,Manager (PI),Cluster Name,Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost\n"
+                            "2023-01,namespace1,namespace1,,test-cluster,,,,,35,OpenShift CPU,0.013,0.46\n")
 
         with tempfile.NamedTemporaryFile(mode="w+") as tmp:
             utils.write_metrics_by_namespace(
@@ -371,7 +374,8 @@ class TestWriteMetricsByClasses(TestCase):
                 file_name=tmp.name,
                 report_month="2023-01",
                 su_definitions=SU_DEFINITIONS,
-                rates=RATES
+                rates=RATES,
+                cluster_name="test-cluster",
                 )
             self.assertEqual(tmp.read(), expected_output)
 
@@ -439,10 +443,10 @@ class TestWriteMetricsWithIgnoreHours(TestCase):
 
     def test_write_metrics_by_namespace_with_ignore_hours(self):
         expected_output = (
-            "Invoice Month,Project - Allocation,Project - Allocation ID,Manager (PI),Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost\n"
-            "2023-01,namespace1,namespace1,,,,,,12,OpenShift CPU,0.013,0.16\n"
-            "2023-01,namespace2,namespace2,,,,,,170,OpenShift CPU,0.013,2.21\n"
-            "2023-01,namespace2,namespace2,,,,,,37,OpenShift GPUA100SXM4,2.078,76.89\n"
+            "Invoice Month,Project - Allocation,Project - Allocation ID,Manager (PI),Cluster Name,Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost\n"
+            "2023-01,namespace1,namespace1,,test-cluster,,,,,12,OpenShift CPU,0.013,0.16\n"
+            "2023-01,namespace2,namespace2,,test-cluster,,,,,170,OpenShift CPU,0.013,2.21\n"
+            "2023-01,namespace2,namespace2,,test-cluster,,,,,37,OpenShift GPUA100SXM4,2.078,76.89\n"
         )
 
         with tempfile.NamedTemporaryFile(mode="w+") as tmp:
@@ -452,6 +456,7 @@ class TestWriteMetricsWithIgnoreHours(TestCase):
                 report_month="2023-01",
                 rates=RATES,
                 su_definitions=SU_DEFINITIONS,
+                cluster_name="test-cluster",
                 ignore_hours=self.ignore_times
             )
             self.assertEqual(tmp.read(), expected_output)
