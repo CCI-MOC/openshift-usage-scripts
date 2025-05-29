@@ -4,4 +4,3 @@ openshift_metrics/__pycache__/
 openshift_metrics/tests/__pycache__/
 *.xlsx
 *.json
-

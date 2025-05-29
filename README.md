@@ -90,4 +90,3 @@ The script queries the following metrics:
 * *'kube_pod_resource_request{resource=~".*gpu.*"} unless on(pod, namespace) kube_pod_status_unschedulable'*
    * GPU Requested by pods that are sheculed to run. The requested GPU resource must have the word "gpu" in it
    to be captured by this query. E.g. `nvidia.com/gpu`
-
