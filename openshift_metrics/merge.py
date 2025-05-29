@@ -98,13 +98,14 @@ def main():
 
     report_start_date = None
     report_end_date = None
-
+    cluster_name = None
     processor = MetricsProcessor()
 
     for file in files:
         with open(file, "r") as jsonfile:
             metrics_from_file = json.load(jsonfile)
-            cluster_name = metrics_from_file["cluster_name"]
+            if cluster_name is None:
+                cluster_name = metrics_from_file.get("cluster_name")
             cpu_request_metrics = metrics_from_file["cpu_metrics"]
             memory_request_metrics = metrics_from_file["memory_metrics"]
             gpu_request_metrics = metrics_from_file.get("gpu_metrics", None)
@@ -123,7 +124,10 @@ def main():
             elif compare_dates(report_end_date, metrics_from_file["end_date"]):
                 report_end_date = metrics_from_file["end_date"]
 
-    logger.info(f"Generating report from {report_start_date} to {report_end_date}")
+    if cluster_name is None:
+        cluster_name = "Unknown Cluster"
+
+    logger.info(f"Generating report from {report_start_date} to {report_end_date} for {cluster_name}")
     if ignore_hours:
         for start_time, end_time in ignore_hours:
             logger.info(f"{start_time} to {end_time} will be excluded from the invoice")
