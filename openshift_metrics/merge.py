@@ -17,6 +17,7 @@ from openshift_metrics.metrics_processor import MetricsProcessor
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 def compare_dates(date_str1, date_str2):
     """Returns true is date1 is earlier than date2"""
     date1 = datetime.strptime(date_str1, "%Y-%m-%d")
@@ -31,12 +32,15 @@ def parse_timestamp_range(timestamp_range: str) -> Tuple[datetime, datetime]:
         end_dt = datetime.fromisoformat(end_str).replace(tzinfo=UTC)
 
         if start_dt > end_dt:
-            raise argparse.ArgumentTypeError("Ignore start time is after ignore end time")
+            raise argparse.ArgumentTypeError(
+                "Ignore start time is after ignore end time"
+            )
         return start_dt, end_dt
     except ValueError:
         raise argparse.ArgumentTypeError(
             "Timestamp range must be in the format 'YYYY-MM-DDTHH:MM:SS,YYYY-MM-DDTHH:MM:SS'"
         )
+
 
 def get_su_definitions(report_month) -> dict:
     su_definitions = {}
@@ -46,14 +50,21 @@ def get_su_definitions(report_month) -> dict:
     for su_name in su_names:
         su_definitions.setdefault(f"OpenShift {su_name}", {})
         for resource_name in resource_names:
-            su_definitions[f"OpenShift {su_name}"][resource_name] = nerc_data.get_value_at(
-                f"{resource_name} in {su_name} SU", report_month, Decimal
+            su_definitions[f"OpenShift {su_name}"][resource_name] = (
+                nerc_data.get_value_at(
+                    f"{resource_name} in {su_name} SU", report_month, Decimal
+                )
             )
     # Some internal SUs that I like to map to when there's insufficient data
-    su_definitions[invoice.SU_UNKNOWN_GPU] = {"vGPUs": 1, "vCPUs": 8, "RAM": 64*1024}
-    su_definitions[invoice.SU_UNKNOWN_MIG_GPU] = {"vGPUs": 1, "vCPUs": 8, "RAM": 64*1024}
+    su_definitions[invoice.SU_UNKNOWN_GPU] = {"vGPUs": 1, "vCPUs": 8, "RAM": 64 * 1024}
+    su_definitions[invoice.SU_UNKNOWN_MIG_GPU] = {
+        "vGPUs": 1,
+        "vCPUs": 8,
+        "RAM": 64 * 1024,
+    }
     su_definitions[invoice.SU_UNKNOWN] = {"vGPUs": 0, "vCPUs": 1, "RAM": 1024}
     return su_definitions
+
 
 def main():
     """Reads the metrics from files and generates the reports"""
@@ -61,25 +72,22 @@ def main():
     parser.add_argument("files", nargs="+")
     parser.add_argument(
         "--invoice-file",
-        help = "Name of the invoice file. Defaults to NERC OpenShift <report_month>.csv"
+        help="Name of the invoice file. Defaults to NERC OpenShift <report_month>.csv",
     )
     parser.add_argument(
         "--pod-report-file",
-        help = "Name of the pod report file. Defaults to Pod NERC OpenShift <report_month>.csv"
+        help="Name of the pod report file. Defaults to Pod NERC OpenShift <report_month>.csv",
     )
     parser.add_argument(
         "--class-invoice-file",
-        help = "Name of the class report file. Defaults to NERC OpenShift Class <report_month>.csv"
+        help="Name of the class report file. Defaults to NERC OpenShift Class <report_month>.csv",
     )
-    parser.add_argument(
-        "--upload-to-s3",
-        action="store_true"
-    )
+    parser.add_argument("--upload-to-s3", action="store_true")
     parser.add_argument(
         "--ignore-hours",
         type=parse_timestamp_range,
         nargs="*",
-        help="List of timestamp ranges in UTC to ignore in the format 'YYYY-MM-DDTHH:MM:SS,YYYY-MM-DDTHH:MM:SS'"
+        help="List of timestamp ranges in UTC to ignore in the format 'YYYY-MM-DDTHH:MM:SS,YYYY-MM-DDTHH:MM:SS'",
     )
     parser.add_argument(
         "--use-nerc-rates",
@@ -127,7 +135,9 @@ def main():
     if cluster_name is None:
         cluster_name = "Unknown Cluster"
 
-    logger.info(f"Generating report from {report_start_date} to {report_end_date} for {cluster_name}")
+    logger.info(
+        f"Generating report from {report_start_date} to {report_end_date} for {cluster_name}"
+    )
     if ignore_hours:
         for start_time, end_time in ignore_hours:
             logger.info(f"{start_time} to {end_time} will be excluded from the invoice")
@@ -143,7 +153,9 @@ def main():
         rates = invoice.Rates(
             cpu=nerc_data.get_value_at("CPU SU Rate", report_month, Decimal),
             gpu_a100=nerc_data.get_value_at("GPUA100 SU Rate", report_month, Decimal),
-            gpu_a100sxm4=nerc_data.get_value_at("GPUA100SXM4 SU Rate", report_month, Decimal),
+            gpu_a100sxm4=nerc_data.get_value_at(
+                "GPUA100SXM4 SU Rate", report_month, Decimal
+            ),
             gpu_v100=nerc_data.get_value_at("GPUV100 SU Rate", report_month, Decimal),
             gpu_h100=nerc_data.get_value_at("GPUH100 SU Rate", report_month, Decimal),
         )
@@ -214,7 +226,7 @@ def main():
         )
         utils.upload_to_s3(invoice_file, bucket_name, primary_location)
 
-        timestamp = datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')
+        timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
         secondary_location = (
             f"Invoices/{report_month}/"
             f"Archive/{cluster_name} {report_month} {timestamp}.csv"
@@ -230,6 +242,7 @@ def main():
             f"Archive/Class-{cluster_name} {report_month} {timestamp}.csv"
         )
         utils.upload_to_s3(class_invoice_file, bucket_name, class_invoice_location)
+
 
 if __name__ == "__main__":
     main()

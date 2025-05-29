@@ -36,19 +36,20 @@ class MetricsProcessor:
             if metric_name == "cpu_request":
                 class_name = metric["metric"].get("label_nerc_mghpcc_org_class")
                 if class_name is not None:
-                    self.merged_data[namespace][pod]["label_nerc_mghpcc_org_class"] = class_name
+                    self.merged_data[namespace][pod]["label_nerc_mghpcc_org_class"] = (
+                        class_name
+                    )
 
             gpu_type, gpu_resource, node_model = self._extract_gpu_info(
                 metric_name, metric
             )
 
             for epoch_time, metric_value in metric["values"]:
-
                 self.merged_data[namespace][pod]["metrics"].setdefault(epoch_time, {})
 
-                self.merged_data[namespace][pod]["metrics"][epoch_time][
-                    metric_name
-                ] = metric_value
+                self.merged_data[namespace][pod]["metrics"][epoch_time][metric_name] = (
+                    metric_value
+                )
                 if gpu_type:
                     self.merged_data[namespace][pod]["metrics"][epoch_time][
                         "gpu_type"
@@ -62,9 +63,9 @@ class MetricsProcessor:
                         "node_model"
                     ] = node_model
                 if node:
-                    self.merged_data[namespace][pod]["metrics"][epoch_time][
-                        "node"
-                    ] = node
+                    self.merged_data[namespace][pod]["metrics"][epoch_time]["node"] = (
+                        node
+                    )
 
     def _extract_gpu_info(self, metric_name: str, metric: Dict) -> GPUInfo:
         """Extract GPU related info"""
@@ -106,11 +107,9 @@ class MetricsProcessor:
         condensed_dict = {}
 
         for namespace, pods in self.merged_data.items():
-
             condensed_dict.setdefault(namespace, {})
 
             for pod, pod_dict in pods.items():
-
                 metrics_dict = pod_dict["metrics"]
                 new_metrics_dict = {}
                 epoch_times_list = sorted(metrics_dict.keys())

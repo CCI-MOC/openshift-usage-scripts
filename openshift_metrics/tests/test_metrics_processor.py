@@ -584,7 +584,6 @@ class TestExtractGPUInfo(TestCase):
             "metric": {
                 "pod": "pod2",
                 "namespace": "namespace1",
-                "resource": "cpu",
                 "resource": "nvidia.com/gpu",
                 "label_nvidia_com_gpu_product": "V100-GPU",
                 "node": "node-1",
@@ -622,7 +621,6 @@ class TestExtractGPUInfo(TestCase):
             "metric": {
                 "pod": "pod2",
                 "namespace": "namespace1",
-                "resource": "cpu",
                 "resource": "nvidia.com/gpu",
                 "label_nvidia_com_gpu_product": "V100-GPU",
                 "node": "node-2",
@@ -657,7 +655,6 @@ class TestExtractGPUInfo(TestCase):
             "metric": {
                 "pod": "pod2",
                 "namespace": "namespace1",
-                "resource": "cpu",
                 "resource": "nvidia.com/gpu",
                 "node": "node-1",
             },

@@ -9,8 +9,9 @@ from openshift_metrics.utils import EmptyResultError
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class PrometheusClient:
-    def __init__(self, prometheus_url: str, token: str, step_min: int=15):
+    def __init__(self, prometheus_url: str, token: str, step_min: int = 15):
         self.prometheus_url = prometheus_url
         self.token = token
         self.step_min = step_min
@@ -22,7 +23,9 @@ class PrometheusClient:
         day_url_vars = f"start={start_date}T00:00:00Z&end={end_date}T23:59:59Z"
         url = f"{self.prometheus_url}/api/v1/query_range?query={metric}&{day_url_vars}&step={self.step_min}m"
 
-        retries = Retry(total=3, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504])
+        retries = Retry(
+            total=3, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504]
+        )
         session = requests.Session()
         session.mount("https://", HTTPAdapter(max_retries=retries))
 
