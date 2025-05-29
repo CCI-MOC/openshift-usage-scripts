@@ -56,7 +56,7 @@ def csv_writer(rows, file_name):
         csvwriter.writerows(rows)
 
 
-def write_metrics_by_namespace(condensed_metrics_dict, file_name, report_month, rates, su_definitions, ignore_hours=None):
+def write_metrics_by_namespace(condensed_metrics_dict, file_name, report_month, rates, su_definitions, cluster_name, ignore_hours=None):
     """
     Process metrics dictionary to aggregate usage by namespace and then write that to a file
     """
@@ -67,6 +67,7 @@ def write_metrics_by_namespace(condensed_metrics_dict, file_name, report_month, 
         "Project - Allocation",
         "Project - Allocation ID",
         "Manager (PI)",
+        "Cluster Name",
         "Invoice Email",
         "Invoice Address",
         "Institution",
@@ -87,6 +88,7 @@ def write_metrics_by_namespace(condensed_metrics_dict, file_name, report_month, 
                 project=namespace,
                 project_id=namespace,
                 pi="",
+                cluster_name=cluster_name,
                 invoice_email="",
                 invoice_address="",
                 intitution="",
@@ -167,7 +169,7 @@ def write_metrics_by_pod(condensed_metrics_dict, file_name, su_definitions, igno
 
     csv_writer(rows, file_name)
 
-def write_metrics_by_classes(condensed_metrics_dict, file_name, report_month, rates, namespaces_with_classes, su_definitions, ignore_hours=None):
+def write_metrics_by_classes(condensed_metrics_dict, file_name, report_month, rates, namespaces_with_classes, su_definitions, cluster_name, ignore_hours=None):
     """
     Process metrics dictionary to aggregate usage by the class label.
 
@@ -181,6 +183,7 @@ def write_metrics_by_classes(condensed_metrics_dict, file_name, report_month, ra
         "Project - Allocation",
         "Project - Allocation ID",
         "Manager (PI)",
+        "Cluster Name",
         "Invoice Email",
         "Invoice Address",
         "Institution",
@@ -210,6 +213,7 @@ def write_metrics_by_classes(condensed_metrics_dict, file_name, report_month, ra
                     project=project_name,
                     project_id=project_name,
                     pi="",
+                    cluster_name=cluster_name,
                     invoice_email="",
                     invoice_address="",
                     intitution="",

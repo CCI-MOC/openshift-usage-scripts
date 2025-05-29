@@ -33,6 +33,11 @@ GPU_REQUEST = 'kube_pod_resource_request{resource=~"nvidia.com.*", node!=""} unl
 KUBE_NODE_LABELS = 'kube_node_labels{label_nvidia_com_gpu_product!=""}'
 KUBE_POD_LABELS = 'kube_pod_labels{label_nerc_mghpcc_org_class!=""}'
 
+URL_CLUSTER_NAME_MAPPING = {
+    "https://thanos-querier-openshift-monitoring.apps.shift.nerc.mghpcc.org": "ocp-prod",
+    "https://thanos-querier-openshift-monitoring.apps.ocp-test.nerc.mghpcc.org": "ocp-test",
+}
+
 def main():
     """This method kick starts the process of collecting and saving the metrics"""
 
@@ -84,6 +89,7 @@ def main():
     metrics_dict = {}
     metrics_dict["start_date"] = report_start_date
     metrics_dict["end_date"] = report_end_date
+    metrics_dict["cluster_name"] = URL_CLUSTER_NAME_MAPPING.get(args.openshift_url, args.openshift_url)
 
     cpu_request_metrics = prom_client.query_metric(
         CPU_REQUEST, report_start_date, report_end_date
