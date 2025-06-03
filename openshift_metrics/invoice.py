@@ -97,7 +97,9 @@ class Pod:
             return ServiceUnit(SU_UNKNOWN_GPU, 0, "GPU")
 
         cpu_multiplier = self.cpu_request / int(su_definitions[su_type]["vCPUs"])
-        memory_multiplier = self.memory_request / int((int(su_definitions[su_type]["RAM"])/1024))
+        memory_multiplier = self.memory_request / int(
+            (int(su_definitions[su_type]["RAM"]) / 1024)
+        )
         if int(su_definitions[su_type]["vGPUs"]) != 0:
             gpu_multiplier = self.gpu_request / int(su_definitions[su_type]["vGPUs"])
         else:
@@ -159,7 +161,9 @@ class Pod:
         memory_request = self.memory_request.quantize(
             Decimal(".0001"), rounding=ROUND_HALF_UP
         )
-        runtime = self.get_runtime(ignore_times).quantize(Decimal(".0001"), rounding=ROUND_HALF_UP)
+        runtime = self.get_runtime(ignore_times).quantize(
+            Decimal(".0001"), rounding=ROUND_HALF_UP
+        )
         return [
             self.namespace,
             start_time,
