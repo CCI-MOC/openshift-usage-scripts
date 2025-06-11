@@ -100,8 +100,8 @@ class Pod:
         memory_multiplier = self.memory_request / int(
             (int(su_definitions[su_type]["RAM"]) / 1024)
         )
-        if int(su_definitions[su_type]["vGPUs"]) != 0:
-            gpu_multiplier = self.gpu_request / int(su_definitions[su_type]["vGPUs"])
+        if int(su_definitions[su_type]["GPUs"]) != 0:
+            gpu_multiplier = self.gpu_request / int(su_definitions[su_type]["GPUs"])
         else:
             gpu_multiplier = 0
 
