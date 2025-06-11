@@ -46,7 +46,7 @@ def get_su_definitions(report_month) -> dict:
     su_definitions = {}
     nerc_data = nerc_rates.load_from_url()
     su_names = ["GPUV100", "GPUA100", "GPUA100SXM4", "GPUH100", "CPU"]
-    resource_names = ["vCPUs", "RAM", "vGPUs"]
+    resource_names = ["vCPUs", "RAM", "GPUs"]
     for su_name in su_names:
         su_definitions.setdefault(f"OpenShift {su_name}", {})
         for resource_name in resource_names:
@@ -56,13 +56,13 @@ def get_su_definitions(report_month) -> dict:
                 )
             )
     # Some internal SUs that I like to map to when there's insufficient data
-    su_definitions[invoice.SU_UNKNOWN_GPU] = {"vGPUs": 1, "vCPUs": 8, "RAM": 64 * 1024}
+    su_definitions[invoice.SU_UNKNOWN_GPU] = {"GPUs": 1, "vCPUs": 8, "RAM": 64 * 1024}
     su_definitions[invoice.SU_UNKNOWN_MIG_GPU] = {
-        "vGPUs": 1,
+        "GPUs": 1,
         "vCPUs": 8,
         "RAM": 64 * 1024,
     }
-    su_definitions[invoice.SU_UNKNOWN] = {"vGPUs": 0, "vCPUs": 1, "RAM": 1024}
+    su_definitions[invoice.SU_UNKNOWN] = {"GPUs": 0, "vCPUs": 1, "RAM": 1024}
     return su_definitions
 
 
