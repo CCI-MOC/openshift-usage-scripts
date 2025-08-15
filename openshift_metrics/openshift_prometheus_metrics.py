@@ -36,6 +36,7 @@ KUBE_POD_LABELS = 'kube_pod_labels{label_nerc_mghpcc_org_class!=""}'
 URL_CLUSTER_NAME_MAPPING = {
     "https://thanos-querier-openshift-monitoring.apps.shift.nerc.mghpcc.org": "ocp-prod",
     "https://thanos-querier-openshift-monitoring.apps.ocp-test.nerc.mghpcc.org": "ocp-test",
+    "https://thanos-querier-openshift-monitoring.apps.edu.nerc.mghpcc.org": "academic",
 }
 
 
