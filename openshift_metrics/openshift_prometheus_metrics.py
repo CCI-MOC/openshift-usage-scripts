@@ -14,30 +14,26 @@
 """Collect and save metrics from prometheus"""
 
 import argparse
-from datetime import datetime, timedelta
-import os
+from datetime import datetime
 import sys
 import json
 import logging
 
-from openshift_metrics import utils
+from openshift_metrics import utils, config
 from openshift_metrics.prometheus_client import PrometheusClient
 from openshift_metrics.metrics_processor import MetricsProcessor
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-CPU_REQUEST = 'kube_pod_resource_request{resource="cpu", node!=""} unless on(pod, namespace) kube_pod_status_unschedulable'
-MEMORY_REQUEST = 'kube_pod_resource_request{resource="memory", node!=""} unless on(pod, namespace) kube_pod_status_unschedulable'
-GPU_REQUEST = 'kube_pod_resource_request{resource=~"nvidia.com.*", node!=""} unless on(pod, namespace) kube_pod_status_unschedulable'
-KUBE_NODE_LABELS = 'kube_node_labels{label_nvidia_com_gpu_product!=""}'
-KUBE_POD_LABELS = 'kube_pod_labels{label_nerc_mghpcc_org_class!=""}'
+# Use centralized configuration for Prometheus queries and cluster mappings
+CPU_REQUEST = config.PROMETHEUS_QUERIES["CPU_REQUEST"]
+MEMORY_REQUEST = config.PROMETHEUS_QUERIES["MEMORY_REQUEST"]
+GPU_REQUEST = config.PROMETHEUS_QUERIES["GPU_REQUEST"]
+KUBE_NODE_LABELS = config.PROMETHEUS_QUERIES["KUBE_NODE_LABELS"]
+KUBE_POD_LABELS = config.PROMETHEUS_QUERIES["KUBE_POD_LABELS"]
 
-URL_CLUSTER_NAME_MAPPING = {
-    "https://thanos-querier-openshift-monitoring.apps.shift.nerc.mghpcc.org": "ocp-prod",
-    "https://thanos-querier-openshift-monitoring.apps.ocp-test.nerc.mghpcc.org": "ocp-test",
-    "https://thanos-querier-openshift-monitoring.apps.edu.nerc.mghpcc.org": "academic",
-}
+URL_CLUSTER_NAME_MAPPING = config.CLUSTER_NAME_MAPPING
 
 
 def main():
@@ -47,20 +43,27 @@ def main():
     parser.add_argument(
         "--openshift-url",
         help="OpenShift Prometheus URL",
-        default=os.getenv("OPENSHIFT_PROMETHEUS_URL"),
+        default=config.OPENSHIFT_PROMETHEUS_URL,
     )
     parser.add_argument(
         "--report-start-date",
         help="report date (ex: 2022-03-14)",
-        default=(datetime.today() - timedelta(days=1)).strftime("%Y-%m-%d"),
+        default=config.REPORT_START_DATE,
     )
     parser.add_argument(
         "--report-end-date",
         help="report date (ex: 2022-03-14)",
-        default=(datetime.today() - timedelta(days=1)).strftime("%Y-%m-%d"),
+        default=config.REPORT_END_DATE,
     )
-    parser.add_argument("--upload-to-s3", action="store_true")
-    parser.add_argument("--output-file")
+    parser.add_argument(
+        "--upload-to-s3",
+        action="store_true",
+        default=config.UPLOAD_TO_S3,
+    )
+    parser.add_argument(
+        "--output-file",
+        default=config.OUTPUT_FILE,
+    )
 
     args = parser.parse_args()
     if not args.openshift_url:
@@ -88,7 +91,7 @@ def main():
         f"Generating report starting {report_start_date} and ending {report_end_date} in {output_file}"
     )
 
-    token = os.environ.get("OPENSHIFT_TOKEN")
+    token = config.OPENSHIFT_TOKEN
     prom_client = PrometheusClient(openshift_url, token)
 
     metrics_dict = {}
@@ -151,7 +154,7 @@ def main():
         json.dump(metrics_dict, file)
 
     if args.upload_to_s3:
-        bucket_name = os.environ.get("S3_METRICS_BUCKET", "openshift_metrics")
+        bucket_name = config.S3_METRICS_BUCKET
         utils.upload_to_s3(output_file, bucket_name, s3_location)
 
 

@@ -3,10 +3,11 @@ from typing import List, Dict
 from collections import namedtuple
 import logging
 
+from openshift_metrics import config, constants
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-GPU_UNKNOWN_TYPE = "GPU_UNKNOWN_TYPE"
 GPUInfo = namedtuple("GPUInfo", ["gpu_type", "gpu_resource", "node_model"])
 
 
@@ -15,13 +16,15 @@ class MetricsProcessor:
 
     def __init__(
         self,
-        interval_minutes: int = 15,
+        interval_minutes: int = None,
         merged_data: dict = None,
-        gpu_mapping_file: str = "gpu_node_map.json",
+        gpu_mapping_file: str = None,
     ):
-        self.interval_minutes = interval_minutes
+        self.interval_minutes = interval_minutes or config.INTERVAL_MINUTES
         self.merged_data = merged_data if merged_data is not None else {}
-        self.gpu_mapping = self._load_gpu_mapping(gpu_mapping_file)
+        self.gpu_mapping = self._load_gpu_mapping(
+            gpu_mapping_file or config.GPU_MAPPING_FILE
+        )
 
     def merge_metrics(self, metric_name, metric_list):
         """Merge metrics (cpu, memory, gpu) by pod"""
@@ -75,16 +78,16 @@ class MetricsProcessor:
 
         if metric_name == "gpu_request":
             gpu_type = metric["metric"].get(
-                "label_nvidia_com_gpu_product", GPU_UNKNOWN_TYPE
+                "label_nvidia_com_gpu_product", constants.GPU_UNKNOWN_TYPE
             )
             gpu_resource = metric["metric"].get("resource")
             node_model = metric["metric"].get("label_nvidia_com_gpu_machine")
 
             # Sometimes GPU labels from the nodes can be missing, in that case
             # we get the gpu_type from the gpu-node file
-            if gpu_type == GPU_UNKNOWN_TYPE:
+            if gpu_type == constants.GPU_UNKNOWN_TYPE:
                 node_name = metric["metric"].get("node")
-                gpu_type = self.gpu_mapping.get(node_name, GPU_UNKNOWN_TYPE)
+                gpu_type = self.gpu_mapping.get(node_name, constants.GPU_UNKNOWN_TYPE)
 
         return GPUInfo(gpu_type, gpu_resource, node_model)
 

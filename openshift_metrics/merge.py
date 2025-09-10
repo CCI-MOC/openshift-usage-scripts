@@ -3,7 +3,6 @@ Merges metrics from files and produces reports by pod and by namespace
 """
 
 import logging
-import os
 import argparse
 from datetime import datetime, UTC
 import json
@@ -11,7 +10,7 @@ from typing import Tuple
 from decimal import Decimal
 import nerc_rates
 
-from openshift_metrics import utils, invoice
+from openshift_metrics import utils, invoice, config, constants
 from openshift_metrics.metrics_processor import MetricsProcessor
 
 logging.basicConfig(level=logging.INFO)
@@ -56,13 +55,13 @@ def get_su_definitions(report_month) -> dict:
                 )
             )
     # Some internal SUs that I like to map to when there's insufficient data
-    su_definitions[invoice.SU_UNKNOWN_GPU] = {"GPUs": 1, "vCPUs": 8, "RAM": 64 * 1024}
-    su_definitions[invoice.SU_UNKNOWN_MIG_GPU] = {
+    su_definitions[constants.SU_UNKNOWN_GPU] = {"GPUs": 1, "vCPUs": 8, "RAM": 64 * 1024}
+    su_definitions[constants.SU_UNKNOWN_MIG_GPU] = {
         "GPUs": 1,
         "vCPUs": 8,
         "RAM": 64 * 1024,
     }
-    su_definitions[invoice.SU_UNKNOWN] = {"GPUs": 0, "vCPUs": 1, "RAM": 1024}
+    su_definitions[constants.SU_UNKNOWN] = {"GPUs": 0, "vCPUs": 1, "RAM": 1024}
     return su_definitions
 
 
@@ -73,16 +72,23 @@ def main():
     parser.add_argument(
         "--invoice-file",
         help="Name of the invoice file. Defaults to NERC OpenShift <report_month>.csv",
+        default=config.INVOICE_FILE,
     )
     parser.add_argument(
         "--pod-report-file",
         help="Name of the pod report file. Defaults to Pod NERC OpenShift <report_month>.csv",
+        default=config.POD_REPORT_FILE,
     )
     parser.add_argument(
         "--class-invoice-file",
         help="Name of the class report file. Defaults to NERC OpenShift Class <report_month>.csv",
+        default=config.CLASS_INVOICE_FILE,
     )
-    parser.add_argument("--upload-to-s3", action="store_true")
+    parser.add_argument(
+        "--upload-to-s3",
+        action="store_true",
+        default=config.UPLOAD_TO_S3,
+    )
     parser.add_argument(
         "--ignore-hours",
         type=parse_timestamp_range,
@@ -93,12 +99,21 @@ def main():
         "--use-nerc-rates",
         action="store_true",
         help="Use rates from the nerc-rates repo",
+        default=config.USE_NERC_RATES,
     )
-    parser.add_argument("--rate-cpu-su", type=Decimal)
-    parser.add_argument("--rate-gpu-v100-su", type=Decimal)
-    parser.add_argument("--rate-gpu-a100sxm4-su", type=Decimal)
-    parser.add_argument("--rate-gpu-a100-su", type=Decimal)
-    parser.add_argument("--rate-gpu-h100-su", type=Decimal)
+    parser.add_argument("--rate-cpu-su", type=Decimal, default=config.RATE_CPU_SU)
+    parser.add_argument(
+        "--rate-gpu-v100-su", type=Decimal, default=config.RATE_GPU_V100_SU
+    )
+    parser.add_argument(
+        "--rate-gpu-a100sxm4-su", type=Decimal, default=config.RATE_GPU_A100SXM4_SU
+    )
+    parser.add_argument(
+        "--rate-gpu-a100-su", type=Decimal, default=config.RATE_GPU_A100_SU
+    )
+    parser.add_argument(
+        "--rate-gpu-h100-su", type=Decimal, default=config.RATE_GPU_H100_SU
+    )
 
     args = parser.parse_args()
     files = args.files
@@ -208,7 +223,7 @@ def main():
         rates=rates,
         su_definitions=su_definitions,
         cluster_name=cluster_name,
-        namespaces_with_classes=["rhods-notebooks"],
+        namespaces_with_classes=config.NAMESPACES_WITH_CLASSES,
         ignore_hours=ignore_hours,
     )
     utils.write_metrics_by_pod(
@@ -219,7 +234,7 @@ def main():
     )
 
     if args.upload_to_s3:
-        bucket_name = os.environ.get("S3_INVOICE_BUCKET", "nerc-invoicing")
+        bucket_name = config.S3_INVOICE_BUCKET
         primary_location = (
             f"Invoices/{report_month}/"
             f"Service Invoices/{cluster_name} {report_month}.csv"

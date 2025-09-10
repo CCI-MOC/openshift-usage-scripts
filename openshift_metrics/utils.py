@@ -13,12 +13,11 @@
 
 """Holds bunch of utility functions"""
 
-import os
 import csv
 import boto3
 import logging
 
-from openshift_metrics import invoice
+from openshift_metrics import invoice, config
 from decimal import Decimal
 
 logging.basicConfig(level=logging.INFO)
@@ -30,11 +29,9 @@ class EmptyResultError(Exception):
 
 
 def upload_to_s3(file, bucket, location):
-    s3_endpoint = os.getenv(
-        "S3_OUTPUT_ENDPOINT_URL", "https://s3.us-east-005.backblazeb2.com"
-    )
-    s3_key_id = os.getenv("S3_OUTPUT_ACCESS_KEY_ID")
-    s3_secret = os.getenv("S3_OUTPUT_SECRET_ACCESS_KEY")
+    s3_endpoint = config.S3_ENDPOINT_URL
+    s3_key_id = config.S3_ACCESS_KEY_ID
+    s3_secret = config.S3_SECRET_ACCESS_KEY
 
     if not s3_key_id or not s3_secret:
         raise Exception(
@@ -97,12 +94,12 @@ def write_metrics_by_namespace(
                 invoice_month=report_month,
                 project=namespace,
                 project_id=namespace,
-                pi="",
+                pi=config.DEFAULT_VALUES["EMPTY_STRING"],
                 cluster_name=cluster_name,
-                invoice_email="",
-                invoice_address="",
-                intitution="",
-                institution_specific_code="",
+                invoice_email=config.DEFAULT_VALUES["EMPTY_STRING"],
+                invoice_address=config.DEFAULT_VALUES["EMPTY_STRING"],
+                intitution=config.DEFAULT_VALUES["EMPTY_STRING"],
+                institution_specific_code=config.DEFAULT_VALUES["EMPTY_STRING"],
                 rates=rates,
                 su_definitions=su_definitions,
                 ignore_hours=ignore_hours,
@@ -176,8 +173,12 @@ def write_metrics_by_pod(
                     / 2**30,
                     gpu_type=pod_metric_dict.get("gpu_type"),
                     gpu_resource=pod_metric_dict.get("gpu_resource"),
-                    node_hostname=pod_metric_dict.get("node", "Unknown Node"),
-                    node_model=pod_metric_dict.get("node_model", "Unknown Model"),
+                    node_hostname=pod_metric_dict.get(
+                        "node", config.DEFAULT_VALUES["UNKNOWN_NODE"]
+                    ),
+                    node_model=pod_metric_dict.get(
+                        "node_model", config.DEFAULT_VALUES["UNKNOWN_MODEL"]
+                    ),
                 )
                 rows.append(pod_obj.generate_pod_row(ignore_hours, su_definitions))
 
@@ -236,12 +237,12 @@ def write_metrics_by_classes(
                     invoice_month=report_month,
                     project=project_name,
                     project_id=project_name,
-                    pi="",
+                    pi=config.DEFAULT_VALUES["EMPTY_STRING"],
                     cluster_name=cluster_name,
-                    invoice_email="",
-                    invoice_address="",
-                    intitution="",
-                    institution_specific_code="",
+                    invoice_email=config.DEFAULT_VALUES["EMPTY_STRING"],
+                    invoice_address=config.DEFAULT_VALUES["EMPTY_STRING"],
+                    intitution=config.DEFAULT_VALUES["EMPTY_STRING"],
+                    institution_specific_code=config.DEFAULT_VALUES["EMPTY_STRING"],
                     su_definitions=su_definitions,
                     rates=rates,
                     ignore_hours=ignore_hours,

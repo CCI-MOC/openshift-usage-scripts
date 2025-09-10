@@ -5,16 +5,17 @@ import logging
 from urllib3.util.retry import Retry
 from requests.adapters import HTTPAdapter
 from openshift_metrics.utils import EmptyResultError
+from openshift_metrics import config
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 class PrometheusClient:
-    def __init__(self, prometheus_url: str, token: str, step_min: int = 15):
+    def __init__(self, prometheus_url: str, token: str, step_min: int = None):
         self.prometheus_url = prometheus_url
         self.token = token
-        self.step_min = step_min
+        self.step_min = step_min or config.STEP_MINUTES
 
     def query_metric(self, metric, start_date, end_date):
         """Queries metric from the provided prometheus_url"""
@@ -24,7 +25,9 @@ class PrometheusClient:
         url = f"{self.prometheus_url}/api/v1/query_range?query={metric}&{day_url_vars}&step={self.step_min}m"
 
         retries = Retry(
-            total=3, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504]
+            total=config.HTTP_RETRY_CONFIG["total"],
+            backoff_factor=config.HTTP_RETRY_CONFIG["backoff_factor"],
+            status_forcelist=config.HTTP_RETRY_CONFIG["status_forcelist"],
         )
         session = requests.Session()
         session.mount("https://", HTTPAdapter(max_retries=retries))
