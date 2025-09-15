@@ -5,34 +5,35 @@ from typing import List, Tuple, Optional
 from decimal import Decimal, ROUND_HALF_UP
 import datetime
 
-# GPU types
-GPU_A100 = "NVIDIA-A100-40GB"
-GPU_A100_SXM4 = "NVIDIA-A100-SXM4-40GB"
-GPU_V100 = "Tesla-V100-PCIE-32GB"
-GPU_H100 = "NVIDIA-H100-80GB-HBM3"
-GPU_UNKNOWN_TYPE = "GPU_UNKNOWN_TYPE"
+from openshift_metrics import constants
+
+# Import constants from centralized constants module
+GPU_A100 = constants.GPU_A100
+GPU_A100_SXM4 = constants.GPU_A100_SXM4
+GPU_V100 = constants.GPU_V100
+GPU_H100 = constants.GPU_H100
+GPU_UNKNOWN_TYPE = constants.GPU_UNKNOWN_TYPE
 
 # GPU Resource - MIG Geometries
-# A100 Strategies
-MIG_1G_5GB = "nvidia.com/mig-1g.5gb"
-MIG_2G_10GB = "nvidia.com/mig-2g.10gb"
-MIG_3G_20GB = "nvidia.com/mig-3g.20gb"
-WHOLE_GPU = "nvidia.com/gpu"
+MIG_1G_5GB = constants.MIG_1G_5GB
+MIG_2G_10GB = constants.MIG_2G_10GB
+MIG_3G_20GB = constants.MIG_3G_20GB
+WHOLE_GPU = constants.WHOLE_GPU
 
 # VM GPU Resources
-VM_GPU_H100 = "nvidia.com/H100_SXM5_80GB"
-VM_GPU_A100_SXM4 = "nvidia.com/A100_SXM4_40GB"
-VM_GPU_V100 = "nvidia.com/GV100GL_Tesla_V100"
+VM_GPU_H100 = constants.VM_GPU_H100
+VM_GPU_A100_SXM4 = constants.VM_GPU_A100_SXM4
+VM_GPU_V100 = constants.VM_GPU_V100
 
 # SU Types
-SU_CPU = "OpenShift CPU"
-SU_A100_GPU = "OpenShift GPUA100"
-SU_A100_SXM4_GPU = "OpenShift GPUA100SXM4"
-SU_V100_GPU = "OpenShift GPUV100"
-SU_H100_GPU = "OpenShift GPUH100"
-SU_UNKNOWN_GPU = "OpenShift Unknown GPU"
-SU_UNKNOWN_MIG_GPU = "OpenShift Unknown MIG GPU"
-SU_UNKNOWN = "Openshift Unknown"
+SU_CPU = constants.SU_CPU
+SU_A100_GPU = constants.SU_A100_GPU
+SU_A100_SXM4_GPU = constants.SU_A100_SXM4_GPU
+SU_V100_GPU = constants.SU_V100_GPU
+SU_H100_GPU = constants.SU_H100_GPU
+SU_UNKNOWN_GPU = constants.SU_UNKNOWN_GPU
+SU_UNKNOWN_MIG_GPU = constants.SU_UNKNOWN_MIG_GPU
+SU_UNKNOWN = constants.SU_UNKNOWN
 
 ServiceUnit = namedtuple("ServiceUnit", ["su_type", "su_count", "determinig_resource"])
 

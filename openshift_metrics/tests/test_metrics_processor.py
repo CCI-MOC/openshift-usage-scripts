@@ -1,5 +1,5 @@
 from unittest import TestCase, mock
-from openshift_metrics import metrics_processor, invoice
+from openshift_metrics import metrics_processor, constants
 
 
 class TestMergeMetrics(TestCase):
@@ -225,7 +225,7 @@ class TestMergeMetrics(TestCase):
                     "pod": "pod1",
                     "namespace": "namespace1",
                     "resource": "nvidia.com/gpu",
-                    "label_nvidia_com_gpu_product": "Tesla-V100-PCIE-32GB",
+                    "label_nvidia_com_gpu_product": constants.GPU_V100,
                 },
                 "values": [
                     [0, 1],
@@ -252,19 +252,19 @@ class TestMergeMetrics(TestCase):
                         0: {
                             "cpu": 10,
                             "gpu_request": 1,
-                            "gpu_type": "Tesla-V100-PCIE-32GB",
+                            "gpu_type": constants.GPU_V100,
                             "gpu_resource": "nvidia.com/gpu",
                         },
                         60: {
                             "cpu": 15,
                             "gpu_request": 1,
-                            "gpu_type": "Tesla-V100-PCIE-32GB",
+                            "gpu_type": constants.GPU_V100,
                             "gpu_resource": "nvidia.com/gpu",
                         },
                         120: {
                             "cpu": 20,
                             "gpu_request": 2,
-                            "gpu_type": "Tesla-V100-PCIE-32GB",
+                            "gpu_type": constants.GPU_V100,
                             "gpu_resource": "nvidia.com/gpu",
                         },
                     },
@@ -490,43 +490,43 @@ class TestCondenseMetrics(TestCase):
                             "cpu": 1,
                             "mem": 4,
                             "gpu_request": 1,
-                            "gpu_type": invoice.GPU_V100,
+                            "gpu_type": constants.GPU_V100,
                         },
                         2700: {
                             "cpu": 1,
                             "mem": 4,
                             "gpu_request": 1,
-                            "gpu_type": invoice.GPU_V100,
+                            "gpu_type": constants.GPU_V100,
                         },
                         3600: {  # type of GPU is changed
                             "cpu": 1,
                             "mem": 4,
                             "gpu_request": 1,
-                            "gpu_type": invoice.GPU_A100_SXM4,
+                            "gpu_type": constants.GPU_A100_SXM4,
                         },
                         4500: {
                             "cpu": 1,
                             "mem": 4,
                             "gpu_request": 1,
-                            "gpu_type": invoice.GPU_A100_SXM4,
+                            "gpu_type": constants.GPU_A100_SXM4,
                         },
                         5400: {
                             "cpu": 1,
                             "mem": 4,
                             "gpu_request": 1,
-                            "gpu_type": invoice.GPU_A100_SXM4,
+                            "gpu_type": constants.GPU_A100_SXM4,
                         },
                         6300: {  # count of GPU is changed
                             "cpu": 1,
                             "mem": 4,
                             "gpu_request": 3,
-                            "gpu_type": invoice.GPU_A100_SXM4,
+                            "gpu_type": constants.GPU_A100_SXM4,
                         },
                         7200: {
                             "cpu": 1,
                             "mem": 4,
                             "gpu_request": 3,
-                            "gpu_type": invoice.GPU_A100_SXM4,
+                            "gpu_type": constants.GPU_A100_SXM4,
                         },
                         8100: {  # no longer using GPUs
                             "cpu": 1,
@@ -546,21 +546,21 @@ class TestCondenseMetrics(TestCase):
                             "mem": 4,
                             "duration": 1800,
                             "gpu_request": 1,
-                            "gpu_type": invoice.GPU_V100,
+                            "gpu_type": constants.GPU_V100,
                         },
                         3600: {
                             "cpu": 1,
                             "mem": 4,
                             "duration": 2700,
                             "gpu_request": 1,
-                            "gpu_type": invoice.GPU_A100_SXM4,
+                            "gpu_type": constants.GPU_A100_SXM4,
                         },
                         6300: {
                             "cpu": 1,
                             "mem": 4,
                             "duration": 1800,
                             "gpu_request": 3,
-                            "gpu_type": invoice.GPU_A100_SXM4,
+                            "gpu_type": constants.GPU_A100_SXM4,
                         },
                         8100: {
                             "cpu": 1,
@@ -670,7 +670,7 @@ class TestExtractGPUInfo(TestCase):
             processor = metrics_processor.MetricsProcessor()
             gpu_info = processor._extract_gpu_info("gpu_request", metric_with_label)
 
-            assert gpu_info.gpu_type == metrics_processor.GPU_UNKNOWN_TYPE
+            assert gpu_info.gpu_type == constants.GPU_UNKNOWN_TYPE
 
 
 class TestInsertNodeLabels(TestCase):
@@ -713,7 +713,7 @@ class TestInsertNodeLabels(TestCase):
             {
                 "metric": {
                     "node": "wrk-2",
-                    "label_nvidia_com_gpu_product": "Tesla-V100-PCIE-32GB",
+                    "label_nvidia_com_gpu_product": constants.GPU_V100,
                     "label_nvidia_com_gpu_machine": "PowerEdge-R740xd",
                 },
                 "values": [[1730939400, "1"], [1730940300, "1"]],
@@ -738,7 +738,7 @@ class TestInsertNodeLabels(TestCase):
                     "pod": "TestPodB",
                     "node": "wrk-2",
                     "namespace": "namespace2",
-                    "label_nvidia_com_gpu_product": "Tesla-V100-PCIE-32GB",
+                    "label_nvidia_com_gpu_product": constants.GPU_V100,
                     "label_nvidia_com_gpu_machine": "PowerEdge-R740xd",
                 },
                 "values": [[1730939400, "4"], [1730940300, "4"], [1730941200, "4"]],
