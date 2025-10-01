@@ -15,7 +15,6 @@
 
 import argparse
 from datetime import datetime, timedelta
-import os
 import sys
 import json
 import logging
@@ -23,6 +22,11 @@ import logging
 from openshift_metrics import utils
 from openshift_metrics.prometheus_client import PrometheusClient
 from openshift_metrics.metrics_processor import MetricsProcessor
+from openshift_metrics.config import (
+    OPENSHIFT_PROMETHEUS_URL,
+    OPENSHIFT_TOKEN,
+    S3_METRICS_BUCKET,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -47,7 +51,7 @@ def main():
     parser.add_argument(
         "--openshift-url",
         help="OpenShift Prometheus URL",
-        default=os.getenv("OPENSHIFT_PROMETHEUS_URL"),
+        default=OPENSHIFT_PROMETHEUS_URL,
     )
     parser.add_argument(
         "--report-start-date",
@@ -88,8 +92,7 @@ def main():
         f"Generating report starting {report_start_date} and ending {report_end_date} in {output_file}"
     )
 
-    token = os.environ.get("OPENSHIFT_TOKEN")
-    prom_client = PrometheusClient(openshift_url, token)
+    prom_client = PrometheusClient(openshift_url, OPENSHIFT_TOKEN)
 
     metrics_dict = {}
     metrics_dict["start_date"] = report_start_date
@@ -151,8 +154,7 @@ def main():
         json.dump(metrics_dict, file)
 
     if args.upload_to_s3:
-        bucket_name = os.environ.get("S3_METRICS_BUCKET", "openshift_metrics")
-        utils.upload_to_s3(output_file, bucket_name, s3_location)
+        utils.upload_to_s3(output_file, S3_METRICS_BUCKET, s3_location)
 
 
 if __name__ == "__main__":
