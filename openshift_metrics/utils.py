@@ -13,12 +13,16 @@
 
 """Holds bunch of utility functions"""
 
-import os
 import csv
 import boto3
 import logging
 
 from openshift_metrics import invoice
+from openshift_metrics.config import (
+    S3_ENDPOINT_URL,
+    S3_ACCESS_KEY_ID,
+    S3_SECRET_ACCESS_KEY,
+)
 from decimal import Decimal
 
 logging.basicConfig(level=logging.INFO)
@@ -30,22 +34,16 @@ class EmptyResultError(Exception):
 
 
 def upload_to_s3(file, bucket, location):
-    s3_endpoint = os.getenv(
-        "S3_OUTPUT_ENDPOINT_URL", "https://s3.us-east-005.backblazeb2.com"
-    )
-    s3_key_id = os.getenv("S3_OUTPUT_ACCESS_KEY_ID")
-    s3_secret = os.getenv("S3_OUTPUT_SECRET_ACCESS_KEY")
-
-    if not s3_key_id or not s3_secret:
+    if not S3_ACCESS_KEY_ID or not S3_SECRET_ACCESS_KEY:
         raise Exception(
             "Must provide S3_OUTPUT_ACCESS_KEY_ID and"
             " S3_OUTPUT_SECRET_ACCESS_KEY environment variables."
         )
     s3 = boto3.client(
         "s3",
-        endpoint_url=s3_endpoint,
-        aws_access_key_id=s3_key_id,
-        aws_secret_access_key=s3_secret,
+        endpoint_url=S3_ENDPOINT_URL,
+        aws_access_key_id=S3_ACCESS_KEY_ID,
+        aws_secret_access_key=S3_SECRET_ACCESS_KEY,
     )
     logger.info(f"Uploading {file} to s3://{bucket}/{location}")
     s3.upload_file(file, Bucket=bucket, Key=location)

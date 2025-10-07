@@ -3,7 +3,6 @@ Merges metrics from files and produces reports by pod and by namespace
 """
 
 import logging
-import os
 import argparse
 from datetime import datetime, UTC
 import json
@@ -13,6 +12,7 @@ import nerc_rates
 
 from openshift_metrics import utils, invoice
 from openshift_metrics.metrics_processor import MetricsProcessor
+from openshift_metrics.config import S3_INVOICE_BUCKET
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -219,29 +219,30 @@ def main():
     )
 
     if args.upload_to_s3:
-        bucket_name = os.environ.get("S3_INVOICE_BUCKET", "nerc-invoicing")
         primary_location = (
             f"Invoices/{report_month}/"
             f"Service Invoices/{cluster_name} {report_month}.csv"
         )
-        utils.upload_to_s3(invoice_file, bucket_name, primary_location)
+        utils.upload_to_s3(invoice_file, S3_INVOICE_BUCKET, primary_location)
 
         timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
         secondary_location = (
             f"Invoices/{report_month}/"
             f"Archive/{cluster_name} {report_month} {timestamp}.csv"
         )
-        utils.upload_to_s3(invoice_file, bucket_name, secondary_location)
+        utils.upload_to_s3(invoice_file, S3_INVOICE_BUCKET, secondary_location)
         pod_report_location = (
             f"Invoices/{report_month}/"
             f"Archive/Pod-{cluster_name} {report_month} {timestamp}.csv"
         )
-        utils.upload_to_s3(pod_report_file, bucket_name, pod_report_location)
+        utils.upload_to_s3(pod_report_file, S3_INVOICE_BUCKET, pod_report_location)
         class_invoice_location = (
             f"Invoices/{report_month}/"
             f"Archive/Class-{cluster_name} {report_month} {timestamp}.csv"
         )
-        utils.upload_to_s3(class_invoice_file, bucket_name, class_invoice_location)
+        utils.upload_to_s3(
+            class_invoice_file, S3_INVOICE_BUCKET, class_invoice_location
+        )
 
 
 if __name__ == "__main__":
