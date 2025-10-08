@@ -12,7 +12,15 @@ import nerc_rates
 
 from openshift_metrics import utils, invoice
 from openshift_metrics.metrics_processor import MetricsProcessor
-from openshift_metrics.config import S3_INVOICE_BUCKET
+from openshift_metrics.config import (
+    S3_INVOICE_BUCKET,
+    USE_NERC_RATES,
+    RATE_CPU_SU,
+    RATE_GPU_V100_SU,
+    RATE_GPU_A100SXM4_SU,
+    RATE_GPU_A100_SU,
+    RATE_GPU_H100_SU,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -89,16 +97,6 @@ def main():
         nargs="*",
         help="List of timestamp ranges in UTC to ignore in the format 'YYYY-MM-DDTHH:MM:SS,YYYY-MM-DDTHH:MM:SS'",
     )
-    parser.add_argument(
-        "--use-nerc-rates",
-        action="store_true",
-        help="Use rates from the nerc-rates repo",
-    )
-    parser.add_argument("--rate-cpu-su", type=Decimal)
-    parser.add_argument("--rate-gpu-v100-su", type=Decimal)
-    parser.add_argument("--rate-gpu-a100sxm4-su", type=Decimal)
-    parser.add_argument("--rate-gpu-a100-su", type=Decimal)
-    parser.add_argument("--rate-gpu-h100-su", type=Decimal)
 
     args = parser.parse_args()
     files = args.files
@@ -147,7 +145,12 @@ def main():
 
     report_month = datetime.strftime(report_start_date, "%Y-%m")
 
-    if args.use_nerc_rates:
+    if USE_NERC_RATES is None:
+        raise ValueError(
+            "USE_NERC_RATES environment variable must be set to 'true' or 'false'"
+        )
+
+    if USE_NERC_RATES:
         logger.info("Using nerc rates.")
         nerc_data = nerc_rates.load_from_url()
         rates = invoice.Rates(
@@ -160,12 +163,23 @@ def main():
             gpu_h100=nerc_data.get_value_at("GPUH100 SU Rate", report_month, Decimal),
         )
     else:
+        if RATE_CPU_SU is None:
+            raise ValueError("RATE_CPU_SU environment variable must be set")
+        if RATE_GPU_V100_SU is None:
+            raise ValueError("RATE_GPU_V100_SU environment variable must be set")
+        if RATE_GPU_A100SXM4_SU is None:
+            raise ValueError("RATE_GPU_A100SXM4_SU environment variable must be set")
+        if RATE_GPU_A100_SU is None:
+            raise ValueError("RATE_GPU_A100_SU environment variable must be set")
+        if RATE_GPU_H100_SU is None:
+            raise ValueError("RATE_GPU_H100_SU environment variable must be set")
+
         rates = invoice.Rates(
-            cpu=Decimal(args.rate_cpu_su),
-            gpu_a100=Decimal(args.rate_gpu_a100_su),
-            gpu_a100sxm4=Decimal(args.rate_gpu_a100sxm4_su),
-            gpu_v100=Decimal(args.rate_gpu_v100_su),
-            gpu_h100=Decimal(args.rate_gpu_h100_su),
+            cpu=Decimal(RATE_CPU_SU),
+            gpu_a100=Decimal(RATE_GPU_A100_SU),
+            gpu_a100sxm4=Decimal(RATE_GPU_A100SXM4_SU),
+            gpu_v100=Decimal(RATE_GPU_V100_SU),
+            gpu_h100=Decimal(RATE_GPU_H100_SU),
         )
 
     if args.invoice_file:
