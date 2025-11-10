@@ -2,6 +2,7 @@
 Merges metrics from files and produces reports by pod and by namespace
 """
 
+import sys
 import logging
 import argparse
 from datetime import datetime, UTC
@@ -12,7 +13,7 @@ from nerc_rates import rates, outages
 
 from openshift_metrics import utils, invoice
 from openshift_metrics.metrics_processor import MetricsProcessor
-from openshift_metrics.config import S3_INVOICE_BUCKET
+from openshift_metrics.config import S3_INVOICE_BUCKET, PROM_QUERY_INTERVAL_MINUTES
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -106,7 +107,31 @@ def main():
     report_start_date = None
     report_end_date = None
     cluster_name = None
-    processor = MetricsProcessor()
+    interval_minutes = None
+
+    for file in files:
+        with open(file, "r") as jsonfile:
+            metrics_from_file = json.load(jsonfile)
+            if interval_minutes is None:
+                interval_minutes = metrics_from_file.get("interval_minutes")
+            else:
+                interval_minutes_from_file = metrics_from_file["interval_minutes"]
+                if interval_minutes != interval_minutes_from_file:
+                    sys.exit(
+                        f"Cannot process files with different intervals {interval_minutes} != {interval_minutes_from_file}"
+                    )
+
+    if interval_minutes is None:
+        logger.info(
+            f"No prometheus query interval minutes found in the given set of files. Using the provided interval: {PROM_QUERY_INTERVAL_MINUTES} minute(s)"
+        )
+        interval_minutes = PROM_QUERY_INTERVAL_MINUTES
+    else:
+        logger.info(
+            f"Prometheus Query interval set to {interval_minutes} minute(s) from file"
+        )
+
+    processor = MetricsProcessor(interval_minutes)
 
     for file in files:
         with open(file, "r") as jsonfile:
