@@ -157,15 +157,15 @@ def main():
     parser.add_argument("files", nargs="+")
     parser.add_argument(
         "--invoice-file",
-        help="Name of the invoice file. Defaults to NERC OpenShift <report_month>.csv",
+        help="Name of the invoice file. Defaults to <cluster-name> <report_month>.csv",
     )
     parser.add_argument(
         "--pod-report-file",
-        help="Name of the pod report file. Defaults to Pod NERC OpenShift <report_month>.csv",
+        help="Name of the pod report file. Defaults to Pod-<cluster-name> <report_month>.csv",
     )
     parser.add_argument(
         "--class-invoice-file",
-        help="Name of the class report file. Defaults to NERC OpenShift Class <report_month>.csv",
+        help=f"Name of the class report file. Defaults to Classes-<cluster-name> <report_month>.csv",
     )
     parser.add_argument("--upload-to-s3", action="store_true")
     parser.add_argument(
@@ -235,11 +235,11 @@ def main():
         for start_time, end_time in ignore_hours:
             logger.info(f"{start_time} to {end_time} will be excluded from the invoice")
 
-    invoice_file = args.invoice_file or f"NERC OpenShift {report_month}.csv"
+    invoice_file = args.invoice_file or f"{cluster_name} {report_month}.csv"
     class_invoice_file = (
-        args.class_invoice_file or f"NERC OpenShift Classes {report_month}.csv"
+        args.class_invoice_file or f"Classes-{cluster_name} {report_month}.csv"
     )
-    pod_report_file = args.pod_report_file or f"Pod NERC OpenShift {report_month}.csv"
+    pod_report_file = args.pod_report_file or f"Pod-{cluster_name} {report_month}.csv"
 
     report_start_date = datetime.strptime(report_start_date, "%Y-%m-%d")
     report_end_date = datetime.strptime(report_end_date, "%Y-%m-%d")
