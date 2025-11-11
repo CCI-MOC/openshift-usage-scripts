@@ -8,7 +8,7 @@ from datetime import datetime, UTC
 import json
 from typing import Tuple
 from decimal import Decimal
-import nerc_rates
+from nerc_rates import rates, outages
 
 from openshift_metrics import utils, invoice
 from openshift_metrics.metrics_processor import MetricsProcessor
@@ -52,14 +52,14 @@ def parse_timestamp_range(timestamp_range: str) -> Tuple[datetime, datetime]:
 
 def get_su_definitions(report_month) -> dict:
     su_definitions = {}
-    nerc_data = nerc_rates.load_from_url()
+    rates_data = rates.load_from_url()
     su_names = ["GPUV100", "GPUA100", "GPUA100SXM4", "GPUH100", "CPU"]
     resource_names = ["vCPUs", "RAM", "GPUs"]
     for su_name in su_names:
         su_definitions.setdefault(f"OpenShift {su_name}", {})
         for resource_name in resource_names:
             su_definitions[f"OpenShift {su_name}"][resource_name] = (
-                nerc_data.get_value_at(
+                rates_data.get_value_at(
                     f"{resource_name} in {su_name} SU", report_month, Decimal
                 )
             )
@@ -100,7 +100,6 @@ def main():
 
     args = parser.parse_args()
     files = args.files
-    ignore_hours = args.ignore_hours
 
     report_start_date = None
     report_end_date = None
@@ -136,14 +135,10 @@ def main():
     logger.info(
         f"Generating report from {report_start_date} to {report_end_date} for {cluster_name}"
     )
-    if ignore_hours:
-        for start_time, end_time in ignore_hours:
-            logger.info(f"{start_time} to {end_time} will be excluded from the invoice")
 
-    report_start_date = datetime.strptime(report_start_date, "%Y-%m-%d")
-    report_end_date = datetime.strptime(report_end_date, "%Y-%m-%d")
-
-    report_month = datetime.strftime(report_start_date, "%Y-%m")
+    report_month = datetime.strftime(
+        datetime.strptime(report_start_date, "%Y-%m-%d"), "%Y-%m"
+    )
 
     if USE_NERC_RATES is None:
         raise ValueError(
@@ -151,16 +146,22 @@ def main():
         )
 
     if USE_NERC_RATES:
-        logger.info("Using nerc rates.")
-        nerc_data = nerc_rates.load_from_url()
-        rates = invoice.Rates(
-            cpu=nerc_data.get_value_at("CPU SU Rate", report_month, Decimal),
-            gpu_a100=nerc_data.get_value_at("GPUA100 SU Rate", report_month, Decimal),
-            gpu_a100sxm4=nerc_data.get_value_at(
+        logger.info("Using nerc rates for rates and outages")
+        rates_data = rates.load_from_url()
+        invoice_rates = invoice.Rates(
+            cpu=rates_data.get_value_at("CPU SU Rate", report_month, Decimal),
+            gpu_a100=rates_data.get_value_at("GPUA100 SU Rate", report_month, Decimal),
+            gpu_a100sxm4=rates_data.get_value_at(
                 "GPUA100SXM4 SU Rate", report_month, Decimal
             ),
-            gpu_v100=nerc_data.get_value_at("GPUV100 SU Rate", report_month, Decimal),
-            gpu_h100=nerc_data.get_value_at("GPUH100 SU Rate", report_month, Decimal),
+            gpu_v100=rates_data.get_value_at("GPUV100 SU Rate", report_month, Decimal),
+            gpu_h100=rates_data.get_value_at("GPUH100 SU Rate", report_month, Decimal),
+        )
+        outage_data = outages.load_from_url()
+        report_start_date_dt = datetime.strptime(report_start_date, "%Y-%m-%d")
+        report_end_date_dt = datetime.strptime(report_end_date, "%Y-%m-%d")
+        ignore_hours = outage_data.get_outages_during(
+            report_start_date_dt, report_end_date_dt, cluster_name
         )
     else:
         if RATE_CPU_SU is None:
@@ -174,13 +175,18 @@ def main():
         if RATE_GPU_H100_SU is None:
             raise ValueError("RATE_GPU_H100_SU environment variable must be set")
 
-        rates = invoice.Rates(
+        invoice_rates = invoice.Rates(
             cpu=Decimal(RATE_CPU_SU),
             gpu_a100=Decimal(RATE_GPU_A100_SU),
             gpu_a100sxm4=Decimal(RATE_GPU_A100SXM4_SU),
             gpu_v100=Decimal(RATE_GPU_V100_SU),
             gpu_h100=Decimal(RATE_GPU_H100_SU),
         )
+        ignore_hours = args.ignore_hours
+
+    if bool(ignore_hours):  # could be None or []
+        for start_time, end_time in ignore_hours:
+            logger.info(f"{start_time} to {end_time} will be excluded from the invoice")
 
     if args.invoice_file:
         invoice_file = args.invoice_file
@@ -197,9 +203,12 @@ def main():
     else:
         pod_report_file = f"Pod NERC OpenShift {report_month}.csv"
 
-    if report_start_date.month != report_end_date.month:
+    report_start_date_dt = datetime.strptime(report_start_date, "%Y-%m-%d")
+    report_end_date_dt = datetime.strptime(report_end_date, "%Y-%m-%d")
+
+    if report_start_date_dt.month != report_end_date_dt.month:
         logger.warning("The report spans multiple months")
-        report_month += " to " + datetime.strftime(report_end_date, "%Y-%m")
+        report_month += " to " + datetime.strftime(report_end_date_dt, "%Y-%m")
 
     condensed_metrics_dict = processor.condense_metrics(
         ["cpu_request", "memory_request", "gpu_request", "gpu_type"]
@@ -210,7 +219,7 @@ def main():
         condensed_metrics_dict=condensed_metrics_dict,
         file_name=invoice_file,
         report_month=report_month,
-        rates=rates,
+        rates=invoice_rates,
         su_definitions=su_definitions,
         cluster_name=cluster_name,
         ignore_hours=ignore_hours,
@@ -219,7 +228,7 @@ def main():
         condensed_metrics_dict=condensed_metrics_dict,
         file_name=class_invoice_file,
         report_month=report_month,
-        rates=rates,
+        rates=invoice_rates,
         su_definitions=su_definitions,
         cluster_name=cluster_name,
         namespaces_with_classes=["rhods-notebooks"],
