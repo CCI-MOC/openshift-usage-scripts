@@ -165,7 +165,7 @@ def main():
     )
     parser.add_argument(
         "--class-invoice-file",
-        help=f"Name of the class report file. Defaults to Classes-<cluster-name> <report_month>.csv",
+        help="Name of the class report file. Defaults to Classes-<cluster-name> <report_month>.csv",
     )
     parser.add_argument("--upload-to-s3", action="store_true")
     parser.add_argument(
