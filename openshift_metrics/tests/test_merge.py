@@ -70,7 +70,7 @@ def test_load_and_merge_data(tmp_path, mock_metrics_file1, mock_metrics_file2):
     p1.write_text(json.dumps(mock_metrics_file1))
     p2.write_text(json.dumps(mock_metrics_file2))
 
-    processor = load_and_merge_metrics([p1, p2])
+    processor = load_and_merge_metrics(2, [p1, p2])
 
     pod1_metrics = processor.merged_data["namespace1"]["pod1"]["metrics"]
 
@@ -96,3 +96,16 @@ def test_load_metadata(tmp_path, mock_metrics_file1, mock_metrics_file2):
     assert metadata.cluster_name == "ocp-prod"
     assert metadata.report_start_date == "2025-09-20"
     assert metadata.report_end_date == "2025-09-21"
+    assert metadata.interval_minutes == "15"
+
+
+def test_load_metadata_failure(tmp_path, mock_metrics_file2, mock_metrics_file3):
+    """Test that loading metadata fails when files have different interval_minutes."""
+
+    p2 = tmp_path / "file2.json"
+    p3 = tmp_path / "file3.json"
+    p2.write_text(json.dumps(mock_metrics_file2))
+    p3.write_text(json.dumps(mock_metrics_file3))
+
+    with pytest.raises(SystemExit):
+        load_metadata([p2, p3])

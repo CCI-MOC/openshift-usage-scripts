@@ -59,6 +59,7 @@ def mock_metrics_file1():
         "cluster_name": "ocp-prod",
         "start_date": "2025-09-20",
         "end_date": "2025-09-20",
+        "interval_minutes": "15",
         "cpu_metrics": cpu_metrics,
         "memory_metrics": memory_metrics,
     }
@@ -122,6 +123,21 @@ def mock_metrics_file2():
         "cluster_name": "ocp-prod",
         "start_date": "2025-09-21",
         "end_date": "2025-09-21",
+        "cpu_metrics": cpu_metrics,
+        "memory_metrics": memory_metrics,
+        "interval_minutes": "15",
+    }
+
+
+@pytest.fixture
+def mock_metrics_file3():
+    cpu_metrics = []
+    memory_metrics = []
+    return {
+        "cluster_name": "ocp-prod",
+        "start_date": "2025-09-21",
+        "end_date": "2025-09-21",
+        "interval_minutes": "3",  # file1 and file2 have 15 minutes
         "cpu_metrics": cpu_metrics,
         "memory_metrics": memory_metrics,
     }
