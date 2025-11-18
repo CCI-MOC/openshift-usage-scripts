@@ -209,13 +209,13 @@ def main():
         logger.info("Using nerc rates for rates and outages")
         rates_data = rates.load_from_url()
         invoice_rates = invoice.Rates(
-            cpu=rates_data.get_value_at("CPU SU Rate", report_month, Decimal),  # type: ignore
-            gpu_a100=rates_data.get_value_at("GPUA100 SU Rate", report_month, Decimal),  # type: ignore
-            gpu_a100sxm4=rates_data.get_value_at(  # type: ignore
+            cpu=rates_data.get_value_at("CPU SU Rate", report_month, Decimal),
+            gpu_a100=rates_data.get_value_at("GPUA100 SU Rate", report_month, Decimal),
+            gpu_a100sxm4=rates_data.get_value_at(
                 "GPUA100SXM4 SU Rate", report_month, Decimal
             ),
-            gpu_v100=rates_data.get_value_at("GPUV100 SU Rate", report_month, Decimal),  # type: ignore
-            gpu_h100=rates_data.get_value_at("GPUH100 SU Rate", report_month, Decimal),  # type: ignore
+            gpu_v100=rates_data.get_value_at("GPUV100 SU Rate", report_month, Decimal),
+            gpu_h100=rates_data.get_value_at("GPUH100 SU Rate", report_month, Decimal),
         )
         outage_data = outages.load_from_url()
         ignore_hours = outage_data.get_outages_during(
