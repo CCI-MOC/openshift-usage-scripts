@@ -192,19 +192,21 @@ class Rates:
     gpu_h100: Decimal
 
 
+@dataclass()
+class ReportMetadata:
+    report_month: str
+    cluster_name: str
+    report_start_time: datetime.datetime
+    report_end_time: datetime.datetime
+    generated_at: datetime.datetime
+
+
 @dataclass
 class ProjectInvoce:
     """Represents the invoicing data for a project."""
 
-    invoice_month: str
     project: str
     project_id: str
-    pi: str
-    cluster_name: str
-    invoice_email: str
-    invoice_address: str
-    intitution: str
-    institution_specific_code: str
     rates: Rates
     su_definitions: dict
     ignore_hours: Optional[List[Tuple[datetime.datetime, datetime.datetime]]] = None
@@ -240,7 +242,7 @@ class ProjectInvoce:
             return self.rates.gpu_h100
         return Decimal(0)
 
-    def generate_invoice_rows(self, report_month, report_start_time, report_end_time, generated_at) -> List[str]:
+    def generate_invoice_rows(self, metadata: ReportMetadata) -> List[str]:
         rows = []
         for su_type, hours in self.su_hours.items():
             if hours > 0:
@@ -248,22 +250,22 @@ class ProjectInvoce:
                 rate = self.get_rate(su_type)
                 cost = (rate * hours).quantize(Decimal(".01"), rounding=ROUND_HALF_UP)
                 row = [
-                    report_month,
-                    report_start_time,
-                    report_end_time,
+                    metadata.report_month,
+                    metadata.report_start_time.strftime("%Y-%m-%d%H:%M:%SZ"),
+                    metadata.report_end_time.strftime("%Y-%m-%d%H:%M:%SZ"),
                     self.project,
                     self.project_id,
-                    self.pi,
-                    self.cluster_name,
-                    self.invoice_email,
-                    self.invoice_address,
-                    self.intitution,
-                    self.institution_specific_code,
+                    "",  # pi
+                    metadata.cluster_name,
+                    "",  # invoice_email
+                    "",  # invoice_address
+                    "",  # institution
+                    "",  # institution_specific_code
                     hours,
                     su_type,
                     rate,
                     cost,
-                    generated_at,
+                    metadata.generated_at.strftime("%Y-%m-%d%H:%M:%SZ"),
                 ]
                 rows.append(row)
         return rows
