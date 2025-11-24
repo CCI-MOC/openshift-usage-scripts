@@ -5,7 +5,7 @@ Merges metrics from files and produces reports by pod and by namespace
 import sys
 import logging
 import argparse
-from datetime import datetime, UTC
+from datetime import datetime, UTC, timedelta
 import json
 from typing import Tuple
 from decimal import Decimal
@@ -159,9 +159,7 @@ def main():
     if cluster_name is None:
         cluster_name = "Unknown Cluster"
 
-    logger.info(
-        f"Generating report from {report_start_date} to {report_end_date} for {cluster_name}"
-    )
+    logger.info(f"Total metric files read: {len(files)}")
 
     report_month = datetime.strftime(
         datetime.strptime(report_start_date, "%Y-%m-%d"), "%Y-%m"
@@ -212,8 +210,12 @@ def main():
     else:
         pod_report_file = f"Pod NERC OpenShift {report_month}.csv"
 
-    report_start_date = datetime.strptime(report_start_date, "%Y-%m-%d")
-    report_end_date = datetime.strptime(report_end_date, "%Y-%m-%d")
+    report_start_date = datetime.strptime(report_start_date, "%Y-%m-%d").replace(tzinfo=UTC)
+    report_end_date = datetime.strptime(report_end_date, "%Y-%m-%d").replace(tzinfo=UTC) + timedelta(days=1)
+
+    logger.info(
+        f"Generating report from {report_start_date} to {report_end_date} for {cluster_name}"
+    )
 
     if report_start_date.month != report_end_date.month:
         logger.warning("The report spans multiple months")
@@ -224,6 +226,11 @@ def main():
     )
 
     su_definitions = get_su_definitions(report_month)
+
+    generated_at = datetime.now(UTC).strftime("%Y-%m-%d%H:%M:%SZ")
+    report_start_time = report_start_date.strftime("%Y-%m-%d%H:%M:%SZ")
+    report_end_time = report_end_date.strftime("%Y-%m-%d%H:%M:%SZ")
+
     utils.write_metrics_by_namespace(
         condensed_metrics_dict=condensed_metrics_dict,
         file_name=invoice_file,
@@ -231,6 +238,9 @@ def main():
         rates=invoice_rates,
         su_definitions=su_definitions,
         cluster_name=cluster_name,
+        report_start_time=report_start_time,
+        report_end_time=report_end_time,
+        generated_at=generated_at,
         ignore_hours=ignore_hours,
     )
     utils.write_metrics_by_classes(
@@ -241,6 +251,9 @@ def main():
         su_definitions=su_definitions,
         cluster_name=cluster_name,
         namespaces_with_classes=["rhods-notebooks"],
+        report_start_time=report_start_time,
+        report_end_time=report_end_time,
+        generated_at=generated_at,
         ignore_hours=ignore_hours,
     )
     utils.write_metrics_by_pod(

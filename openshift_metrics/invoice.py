@@ -240,7 +240,7 @@ class ProjectInvoce:
             return self.rates.gpu_h100
         return Decimal(0)
 
-    def generate_invoice_rows(self, report_month) -> List[str]:
+    def generate_invoice_rows(self, report_month, report_start_time, report_end_time, generated_at) -> List[str]:
         rows = []
         for su_type, hours in self.su_hours.items():
             if hours > 0:
@@ -249,6 +249,8 @@ class ProjectInvoce:
                 cost = (rate * hours).quantize(Decimal(".01"), rounding=ROUND_HALF_UP)
                 row = [
                     report_month,
+                    report_start_time,
+                    report_end_time,
                     self.project,
                     self.project_id,
                     self.pi,
@@ -261,6 +263,7 @@ class ProjectInvoce:
                     su_type,
                     rate,
                     cost,
+                    generated_at,
                 ]
                 rows.append(row)
         return rows

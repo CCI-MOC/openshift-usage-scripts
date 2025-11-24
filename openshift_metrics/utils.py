@@ -64,6 +64,9 @@ def write_metrics_by_namespace(
     rates,
     su_definitions,
     cluster_name,
+    report_start_time,
+    report_end_time,
+    generated_at,
     ignore_hours=None,
 ):
     """
@@ -73,6 +76,8 @@ def write_metrics_by_namespace(
     rows = []
     headers = [
         "Invoice Month",
+        "Report Start Time",
+        "Report End Time",
         "Project - Allocation",
         "Project - Allocation ID",
         "Manager (PI)",
@@ -85,6 +90,7 @@ def write_metrics_by_namespace(
         "SU Type",
         "Rate",
         "Cost",
+        "Generated At",
     ]
 
     rows.append(headers)
@@ -128,7 +134,7 @@ def write_metrics_by_namespace(
                 project_invoice.add_pod(pod_obj)
 
     for project_invoice in invoices.values():
-        rows.extend(project_invoice.generate_invoice_rows(report_month))
+        rows.extend(project_invoice.generate_invoice_rows(report_month, report_start_time, report_end_time, generated_at))
 
     csv_writer(rows, file_name)
 
@@ -190,6 +196,9 @@ def write_metrics_by_classes(
     namespaces_with_classes,
     su_definitions,
     cluster_name,
+    report_start_time,
+    report_end_time,
+    generated_at,
     ignore_hours=None,
 ):
     """
@@ -265,6 +274,6 @@ def write_metrics_by_classes(
                 project_invoice.add_pod(pod_obj)
 
     for project_invoice in invoices.values():
-        rows.extend(project_invoice.generate_invoice_rows(report_month))
+        rows.extend(project_invoice.generate_invoice_rows(report_month, report_start_time, report_end_time, generated_at))
 
     csv_writer(rows, file_name)
