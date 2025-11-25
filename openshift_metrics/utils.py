@@ -196,6 +196,8 @@ def write_metrics_by_classes(
     rows = []
     headers = [
         "Invoice Month",
+        "Report Start Time",
+        "Report End Time",
         "Project - Allocation",
         "Project - Allocation ID",
         "Manager (PI)",
@@ -208,6 +210,7 @@ def write_metrics_by_classes(
         "SU Type",
         "Rate",
         "Cost",
+        "Generated At",
     ]
 
     rows.append(headers)
