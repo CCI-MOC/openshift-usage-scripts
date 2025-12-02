@@ -213,12 +213,10 @@ def main():
     report_start_date = datetime.strptime(report_start_date, "%Y-%m-%d").replace(
         tzinfo=UTC
     )
-    report_end_date = datetime.strptime(report_end_date, "%Y-%m-%d").replace(
-        tzinfo=UTC
-    ) + timedelta(days=1)
+    report_end_date = datetime.strptime(report_end_date, "%Y-%m-%d").replace(tzinfo=UTC)
 
     logger.info(
-        f"Generating report from {report_start_date} to {report_end_date} for {cluster_name}"
+        f"Generating report from {report_start_date} to {report_end_date + timedelta(days=1)} for {cluster_name}"
     )
 
     if report_start_date.month != report_end_date.month:
@@ -230,13 +228,13 @@ def main():
     )
 
     su_definitions = get_su_definitions(report_month)
-
+    current_time = datetime.now(UTC)
     report_metadata = invoice.ReportMetadata(
         report_month=report_month,
         cluster_name=cluster_name,
         report_start_time=report_start_date,
-        report_end_time=report_end_date,
-        generated_at=datetime.now(UTC),
+        report_end_time=report_end_date + timedelta(days=1),
+        generated_at=current_time,
     )
 
     utils.write_metrics_by_namespace(
@@ -269,8 +267,13 @@ def main():
             f"Service Invoices/{cluster_name} {report_month}.csv"
         )
         utils.upload_to_s3(invoice_file, S3_INVOICE_BUCKET, primary_location)
+        report_date = report_end_date.strftime("%Y-%m-%d")
+        daily_report_location = (
+            f"Invoices/{report_month}/Service Invoices/{cluster_name} {report_date}.csv"
+        )
+        utils.upload_to_s3(invoice_file, S3_INVOICE_BUCKET, daily_report_location)
 
-        timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+        timestamp = current_time.strftime("%Y%m%dT%H%M%SZ")
         secondary_location = (
             f"Invoices/{report_month}/"
             f"Archive/{cluster_name} {report_month} {timestamp}.csv"
