@@ -190,10 +190,10 @@ class TestWriteMetricsByNamespace(TestCase):
 
         expected_output = (
             "Invoice Month,Report Start Time,Report End Time,Project - Allocation,Project - Allocation ID,Manager (PI),Cluster Name,Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost,Generated At\n"
-            "2023-01,2023-01-0100:00:00Z,2023-01-0300:00:00Z,namespace1,namespace1,,test-cluster,,,,,1128,OpenShift CPU,0.013,14.66,2023-01-0500:00:00Z\n"
-            "2023-01,2023-01-0100:00:00Z,2023-01-0300:00:00Z,namespace2,namespace2,,test-cluster,,,,,96,OpenShift CPU,0.013,1.25,2023-01-0500:00:00Z\n"
-            "2023-01,2023-01-0100:00:00Z,2023-01-0300:00:00Z,namespace2,namespace2,,test-cluster,,,,,48,OpenShift GPUA100,1.803,86.54,2023-01-0500:00:00Z\n"
-            "2023-01,2023-01-0100:00:00Z,2023-01-0300:00:00Z,namespace2,namespace2,,test-cluster,,,,,48,OpenShift GPUA100SXM4,2.078,99.74,2023-01-0500:00:00Z\n"
+            "2023-01,2023-01-01T00:00:00+00:00,2023-01-03T00:00:00+00:00,namespace1,namespace1,,test-cluster,,,,,1128,OpenShift CPU,0.013,14.66,2023-01-05T00:00:00+00:00\n"
+            "2023-01,2023-01-01T00:00:00+00:00,2023-01-03T00:00:00+00:00,namespace2,namespace2,,test-cluster,,,,,96,OpenShift CPU,0.013,1.25,2023-01-05T00:00:00+00:00\n"
+            "2023-01,2023-01-01T00:00:00+00:00,2023-01-03T00:00:00+00:00,namespace2,namespace2,,test-cluster,,,,,48,OpenShift GPUA100,1.803,86.54,2023-01-05T00:00:00+00:00\n"
+            "2023-01,2023-01-01T00:00:00+00:00,2023-01-03T00:00:00+00:00,namespace2,namespace2,,test-cluster,,,,,48,OpenShift GPUA100SXM4,2.078,99.74,2023-01-05T00:00:00+00:00\n"
         )
 
         with tempfile.NamedTemporaryFile(mode="w+") as tmp:
@@ -238,8 +238,8 @@ class TestWriteMetricsByNamespace(TestCase):
 
         expected_output = (
             "Invoice Month,Report Start Time,Report End Time,Project - Allocation,Project - Allocation ID,Manager (PI),Cluster Name,Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost,Generated At\n"
-            "2023-01,2023-01-0100:00:00Z,2023-01-0300:00:00Z,namespace1,namespace1,,test-cluster,,,,,24,OpenShift GPUA100SXM4,2.078,49.87,2023-01-0500:00:00Z\n"
-            "2023-01,2023-01-0100:00:00Z,2023-01-0300:00:00Z,namespace1,namespace1,,test-cluster,,,,,24,OpenShift GPUH100,6.04,144.96,2023-01-0500:00:00Z\n"
+            "2023-01,2023-01-01T00:00:00+00:00,2023-01-03T00:00:00+00:00,namespace1,namespace1,,test-cluster,,,,,24,OpenShift GPUA100SXM4,2.078,49.87,2023-01-05T00:00:00+00:00\n"
+            "2023-01,2023-01-01T00:00:00+00:00,2023-01-03T00:00:00+00:00,namespace1,namespace1,,test-cluster,,,,,24,OpenShift GPUH100,6.04,144.96,2023-01-05T00:00:00+00:00\n"
         )
 
         with tempfile.NamedTemporaryFile(mode="w+") as tmp:
@@ -338,10 +338,10 @@ class TestWriteMetricsByClasses(TestCase):
 
         expected_output = (
             "Invoice Month,Report Start Time,Report End Time,Project - Allocation,Project - Allocation ID,Manager (PI),Cluster Name,Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost,Generated At\n"
-            "2023-01,2023-01-0100:00:00Z,2023-01-0300:00:00Z,namespace2:noclass,namespace2:noclass,,test-cluster,,,,,96,OpenShift CPU,0.013,1.25,2023-01-0500:00:00Z\n"
-            "2023-01,2023-01-0100:00:00Z,2023-01-0300:00:00Z,namespace2:math-201,namespace2:math-201,,test-cluster,,,,,96,OpenShift CPU,0.013,1.25,2023-01-0500:00:00Z\n"
-            "2023-01,2023-01-0100:00:00Z,2023-01-0300:00:00Z,namespace2:math-201,namespace2:math-201,,test-cluster,,,,,24,OpenShift GPUA100,1.803,43.27,2023-01-0500:00:00Z\n"
-            "2023-01,2023-01-0100:00:00Z,2023-01-0300:00:00Z,namespace2:cs-101,namespace2:cs-101,,test-cluster,,,,,48,OpenShift GPUA100SXM4,2.078,99.74,2023-01-0500:00:00Z\n"
+            "2023-01,2023-01-01T00:00:00+00:00,2023-01-03T00:00:00+00:00,namespace2:noclass,namespace2:noclass,,test-cluster,,,,,96,OpenShift CPU,0.013,1.25,2023-01-05T00:00:00+00:00\n"
+            "2023-01,2023-01-01T00:00:00+00:00,2023-01-03T00:00:00+00:00,namespace2:math-201,namespace2:math-201,,test-cluster,,,,,96,OpenShift CPU,0.013,1.25,2023-01-05T00:00:00+00:00\n"
+            "2023-01,2023-01-01T00:00:00+00:00,2023-01-03T00:00:00+00:00,namespace2:math-201,namespace2:math-201,,test-cluster,,,,,24,OpenShift GPUA100,1.803,43.27,2023-01-05T00:00:00+00:00\n"
+            "2023-01,2023-01-01T00:00:00+00:00,2023-01-03T00:00:00+00:00,namespace2:cs-101,namespace2:cs-101,,test-cluster,,,,,48,OpenShift GPUA100SXM4,2.078,99.74,2023-01-05T00:00:00+00:00\n"
         )
 
         with tempfile.NamedTemporaryFile(mode="w+") as tmp:
@@ -386,7 +386,7 @@ class TestWriteMetricsByClasses(TestCase):
 
         expected_output = (
             "Invoice Month,Report Start Time,Report End Time,Project - Allocation,Project - Allocation ID,Manager (PI),Cluster Name,Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost,Generated At\n"
-            "2023-01,2023-01-0100:00:00Z,2023-01-0300:00:00Z,namespace1,namespace1,,test-cluster,,,,,35,OpenShift CPU,0.013,0.46,2023-01-0500:00:00Z\n"
+            "2023-01,2023-01-01T00:00:00+00:00,2023-01-03T00:00:00+00:00,namespace1,namespace1,,test-cluster,,,,,35,OpenShift CPU,0.013,0.46,2023-01-05T00:00:00+00:00\n"
         )
 
         with tempfile.NamedTemporaryFile(mode="w+") as tmp:
@@ -472,9 +472,9 @@ class TestWriteMetricsWithIgnoreHours(TestCase):
     def test_write_metrics_by_namespace_with_ignore_hours(self):
         expected_output = (
             "Invoice Month,Report Start Time,Report End Time,Project - Allocation,Project - Allocation ID,Manager (PI),Cluster Name,Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost,Generated At\n"
-            "2023-01,2023-01-0100:00:00Z,2023-01-0300:00:00Z,namespace1,namespace1,,test-cluster,,,,,12,OpenShift CPU,0.013,0.16,2023-01-0500:00:00Z\n"
-            "2023-01,2023-01-0100:00:00Z,2023-01-0300:00:00Z,namespace2,namespace2,,test-cluster,,,,,170,OpenShift CPU,0.013,2.21,2023-01-0500:00:00Z\n"
-            "2023-01,2023-01-0100:00:00Z,2023-01-0300:00:00Z,namespace2,namespace2,,test-cluster,,,,,37,OpenShift GPUA100SXM4,2.078,76.89,2023-01-0500:00:00Z\n"
+            "2023-01,2023-01-01T00:00:00+00:00,2023-01-03T00:00:00+00:00,namespace1,namespace1,,test-cluster,,,,,12,OpenShift CPU,0.013,0.16,2023-01-05T00:00:00+00:00\n"
+            "2023-01,2023-01-01T00:00:00+00:00,2023-01-03T00:00:00+00:00,namespace2,namespace2,,test-cluster,,,,,170,OpenShift CPU,0.013,2.21,2023-01-05T00:00:00+00:00\n"
+            "2023-01,2023-01-01T00:00:00+00:00,2023-01-03T00:00:00+00:00,namespace2,namespace2,,test-cluster,,,,,37,OpenShift GPUA100SXM4,2.078,76.89,2023-01-05T00:00:00+00:00\n"
         )
 
         with tempfile.NamedTemporaryFile(mode="w+") as tmp:

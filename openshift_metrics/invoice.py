@@ -251,8 +251,8 @@ class ProjectInvoce:
                 cost = (rate * hours).quantize(Decimal(".01"), rounding=ROUND_HALF_UP)
                 row = [
                     metadata.report_month,
-                    metadata.report_start_time.strftime("%Y-%m-%d%H:%M:%SZ"),
-                    metadata.report_end_time.strftime("%Y-%m-%d%H:%M:%SZ"),
+                    metadata.report_start_time.isoformat(timespec="seconds"),
+                    metadata.report_end_time.isoformat(timespec="seconds"),
                     self.project,
                     self.project_id,
                     "",  # pi
@@ -265,7 +265,7 @@ class ProjectInvoce:
                     su_type,
                     rate,
                     cost,
-                    metadata.generated_at.strftime("%Y-%m-%d%H:%M:%SZ"),
+                    metadata.generated_at.isoformat(timespec="seconds"),
                 ]
                 rows.append(row)
         return rows
