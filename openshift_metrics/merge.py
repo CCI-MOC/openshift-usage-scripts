@@ -219,10 +219,6 @@ def main():
         f"Generating report from {report_start_date} to {report_end_date + timedelta(days=1)} for {cluster_name}"
     )
 
-    if report_start_date.month != report_end_date.month:
-        logger.warning("The report spans multiple months")
-        report_month += " to " + datetime.strftime(report_end_date, "%Y-%m")
-
     condensed_metrics_dict = processor.condense_metrics(
         ["cpu_request", "memory_request", "gpu_request", "gpu_type"]
     )
