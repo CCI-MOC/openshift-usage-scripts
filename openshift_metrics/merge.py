@@ -5,7 +5,7 @@ Merges metrics from files and produces reports by pod and by namespace
 import sys
 import logging
 import argparse
-from datetime import datetime, UTC
+from datetime import datetime, UTC, timedelta
 import json
 from typing import Tuple
 from decimal import Decimal
@@ -159,9 +159,7 @@ def main():
     if cluster_name is None:
         cluster_name = "Unknown Cluster"
 
-    logger.info(
-        f"Generating report from {report_start_date} to {report_end_date} for {cluster_name}"
-    )
+    logger.info(f"Total metric files read: {len(files)}")
 
     report_month = datetime.strftime(
         datetime.strptime(report_start_date, "%Y-%m-%d"), "%Y-%m"
@@ -212,34 +210,43 @@ def main():
     else:
         pod_report_file = f"Pod NERC OpenShift {report_month}.csv"
 
-    report_start_date = datetime.strptime(report_start_date, "%Y-%m-%d")
-    report_end_date = datetime.strptime(report_end_date, "%Y-%m-%d")
+    report_start_date = datetime.strptime(report_start_date, "%Y-%m-%d").replace(
+        tzinfo=UTC
+    )
+    report_end_date = datetime.strptime(report_end_date, "%Y-%m-%d").replace(tzinfo=UTC)
 
-    if report_start_date.month != report_end_date.month:
-        logger.warning("The report spans multiple months")
-        report_month += " to " + datetime.strftime(report_end_date, "%Y-%m")
+    logger.info(
+        f"Generating report from {report_start_date} to {report_end_date + timedelta(days=1)} for {cluster_name}"
+    )
 
     condensed_metrics_dict = processor.condense_metrics(
         ["cpu_request", "memory_request", "gpu_request", "gpu_type"]
     )
 
     su_definitions = get_su_definitions(report_month)
+    current_time = datetime.now(UTC)
+    report_metadata = invoice.ReportMetadata(
+        report_month=report_month,
+        cluster_name=cluster_name,
+        report_start_time=report_start_date,
+        report_end_time=report_end_date + timedelta(days=1),
+        generated_at=current_time,
+    )
+
     utils.write_metrics_by_namespace(
         condensed_metrics_dict=condensed_metrics_dict,
         file_name=invoice_file,
-        report_month=report_month,
+        report_metadata=report_metadata,
         rates=invoice_rates,
         su_definitions=su_definitions,
-        cluster_name=cluster_name,
         ignore_hours=ignore_hours,
     )
     utils.write_metrics_by_classes(
         condensed_metrics_dict=condensed_metrics_dict,
         file_name=class_invoice_file,
-        report_month=report_month,
+        report_metadata=report_metadata,
         rates=invoice_rates,
         su_definitions=su_definitions,
-        cluster_name=cluster_name,
         namespaces_with_classes=["rhods-notebooks"],
         ignore_hours=ignore_hours,
     )
@@ -256,8 +263,13 @@ def main():
             f"Service Invoices/{cluster_name} {report_month}.csv"
         )
         utils.upload_to_s3(invoice_file, S3_INVOICE_BUCKET, primary_location)
+        report_date = report_end_date.strftime("%Y-%m-%d")
+        daily_report_location = (
+            f"Invoices/{report_month}/Service Invoices/{cluster_name} {report_date}.csv"
+        )
+        utils.upload_to_s3(invoice_file, S3_INVOICE_BUCKET, daily_report_location)
 
-        timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+        timestamp = current_time.strftime("%Y%m%dT%H%M%SZ")
         secondary_location = (
             f"Invoices/{report_month}/"
             f"Archive/{cluster_name} {report_month} {timestamp}.csv"

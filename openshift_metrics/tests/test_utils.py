@@ -109,6 +109,15 @@ class TestWriteMetricsByPod(TestCase):
 
 
 class TestWriteMetricsByNamespace(TestCase):
+    def setUp(self) -> None:
+        self.report_metadata = invoice.ReportMetadata(
+            report_month="2023-01",
+            cluster_name="test-cluster",
+            report_start_time=datetime(2023, 1, 1, tzinfo=UTC),
+            report_end_time=datetime(2023, 1, 3, tzinfo=UTC),
+            generated_at=datetime(2023, 1, 5, tzinfo=UTC),
+        )
+
     def test_write_metrics_log(self):
         test_metrics_dict = {
             "namespace1": {
@@ -180,21 +189,20 @@ class TestWriteMetricsByNamespace(TestCase):
         }
 
         expected_output = (
-            "Invoice Month,Project - Allocation,Project - Allocation ID,Manager (PI),Cluster Name,Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost\n"
-            "2023-01,namespace1,namespace1,,test-cluster,,,,,1128,OpenShift CPU,0.013,14.66\n"
-            "2023-01,namespace2,namespace2,,test-cluster,,,,,96,OpenShift CPU,0.013,1.25\n"
-            "2023-01,namespace2,namespace2,,test-cluster,,,,,48,OpenShift GPUA100,1.803,86.54\n"
-            "2023-01,namespace2,namespace2,,test-cluster,,,,,48,OpenShift GPUA100SXM4,2.078,99.74\n"
+            "Invoice Month,Report Start Time,Report End Time,Project - Allocation,Project - Allocation ID,Manager (PI),Cluster Name,Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost,Generated At\n"
+            "2023-01,2023-01-01T00:00:00+00:00,2023-01-03T00:00:00+00:00,namespace1,namespace1,,test-cluster,,,,,1128,OpenShift CPU,0.013,14.66,2023-01-05T00:00:00+00:00\n"
+            "2023-01,2023-01-01T00:00:00+00:00,2023-01-03T00:00:00+00:00,namespace2,namespace2,,test-cluster,,,,,96,OpenShift CPU,0.013,1.25,2023-01-05T00:00:00+00:00\n"
+            "2023-01,2023-01-01T00:00:00+00:00,2023-01-03T00:00:00+00:00,namespace2,namespace2,,test-cluster,,,,,48,OpenShift GPUA100,1.803,86.54,2023-01-05T00:00:00+00:00\n"
+            "2023-01,2023-01-01T00:00:00+00:00,2023-01-03T00:00:00+00:00,namespace2,namespace2,,test-cluster,,,,,48,OpenShift GPUA100SXM4,2.078,99.74,2023-01-05T00:00:00+00:00\n"
         )
 
         with tempfile.NamedTemporaryFile(mode="w+") as tmp:
             utils.write_metrics_by_namespace(
                 condensed_metrics_dict=test_metrics_dict,
                 file_name=tmp.name,
-                report_month="2023-01",
+                report_metadata=self.report_metadata,
                 rates=RATES,
                 su_definitions=SU_DEFINITIONS,
-                cluster_name="test-cluster",
             )
             self.assertEqual(tmp.read(), expected_output)
 
@@ -229,24 +237,32 @@ class TestWriteMetricsByNamespace(TestCase):
         }
 
         expected_output = (
-            "Invoice Month,Project - Allocation,Project - Allocation ID,Manager (PI),Cluster Name,Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost\n"
-            "2023-01,namespace1,namespace1,,test-cluster,,,,,24,OpenShift GPUA100SXM4,2.078,49.87\n"
-            "2023-01,namespace1,namespace1,,test-cluster,,,,,24,OpenShift GPUH100,6.04,144.96\n"
+            "Invoice Month,Report Start Time,Report End Time,Project - Allocation,Project - Allocation ID,Manager (PI),Cluster Name,Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost,Generated At\n"
+            "2023-01,2023-01-01T00:00:00+00:00,2023-01-03T00:00:00+00:00,namespace1,namespace1,,test-cluster,,,,,24,OpenShift GPUA100SXM4,2.078,49.87,2023-01-05T00:00:00+00:00\n"
+            "2023-01,2023-01-01T00:00:00+00:00,2023-01-03T00:00:00+00:00,namespace1,namespace1,,test-cluster,,,,,24,OpenShift GPUH100,6.04,144.96,2023-01-05T00:00:00+00:00\n"
         )
 
         with tempfile.NamedTemporaryFile(mode="w+") as tmp:
             utils.write_metrics_by_namespace(
                 condensed_metrics_dict=test_metrics_dict,
                 file_name=tmp.name,
-                report_month="2023-01",
+                report_metadata=self.report_metadata,
                 rates=RATES,
                 su_definitions=SU_DEFINITIONS,
-                cluster_name="test-cluster",
             )
             self.assertEqual(tmp.read(), expected_output)
 
 
 class TestWriteMetricsByClasses(TestCase):
+    def setUp(self) -> None:
+        self.report_metadata = invoice.ReportMetadata(
+            report_month="2023-01",
+            cluster_name="test-cluster",
+            report_start_time=datetime(2023, 1, 1, tzinfo=UTC),
+            report_end_time=datetime(2023, 1, 3, tzinfo=UTC),
+            generated_at=datetime(2023, 1, 5, tzinfo=UTC),
+        )
+
     def test_write_metrics_log(self):
         test_metrics_dict = {
             "namespace1": {  # namespace is ignored entirely from the report
@@ -321,22 +337,21 @@ class TestWriteMetricsByClasses(TestCase):
         }
 
         expected_output = (
-            "Invoice Month,Project - Allocation,Project - Allocation ID,Manager (PI),Cluster Name,Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost\n"
-            "2023-01,namespace2:noclass,namespace2:noclass,,test-cluster,,,,,96,OpenShift CPU,0.013,1.25\n"
-            "2023-01,namespace2:math-201,namespace2:math-201,,test-cluster,,,,,96,OpenShift CPU,0.013,1.25\n"
-            "2023-01,namespace2:math-201,namespace2:math-201,,test-cluster,,,,,24,OpenShift GPUA100,1.803,43.27\n"
-            "2023-01,namespace2:cs-101,namespace2:cs-101,,test-cluster,,,,,48,OpenShift GPUA100SXM4,2.078,99.74\n"
+            "Invoice Month,Report Start Time,Report End Time,Project - Allocation,Project - Allocation ID,Manager (PI),Cluster Name,Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost,Generated At\n"
+            "2023-01,2023-01-01T00:00:00+00:00,2023-01-03T00:00:00+00:00,namespace2:noclass,namespace2:noclass,,test-cluster,,,,,96,OpenShift CPU,0.013,1.25,2023-01-05T00:00:00+00:00\n"
+            "2023-01,2023-01-01T00:00:00+00:00,2023-01-03T00:00:00+00:00,namespace2:math-201,namespace2:math-201,,test-cluster,,,,,96,OpenShift CPU,0.013,1.25,2023-01-05T00:00:00+00:00\n"
+            "2023-01,2023-01-01T00:00:00+00:00,2023-01-03T00:00:00+00:00,namespace2:math-201,namespace2:math-201,,test-cluster,,,,,24,OpenShift GPUA100,1.803,43.27,2023-01-05T00:00:00+00:00\n"
+            "2023-01,2023-01-01T00:00:00+00:00,2023-01-03T00:00:00+00:00,namespace2:cs-101,namespace2:cs-101,,test-cluster,,,,,48,OpenShift GPUA100SXM4,2.078,99.74,2023-01-05T00:00:00+00:00\n"
         )
 
         with tempfile.NamedTemporaryFile(mode="w+") as tmp:
             utils.write_metrics_by_classes(
                 condensed_metrics_dict=test_metrics_dict,
                 file_name=tmp.name,
-                report_month="2023-01",
+                report_metadata=self.report_metadata,
                 rates=RATES,
                 su_definitions=SU_DEFINITIONS,
                 namespaces_with_classes=["namespace2"],
-                cluster_name="test-cluster",
             )
             self.assertEqual(tmp.read(), expected_output)
 
@@ -370,18 +385,17 @@ class TestWriteMetricsByClasses(TestCase):
         self.assertEqual(cost, 0.45)
 
         expected_output = (
-            "Invoice Month,Project - Allocation,Project - Allocation ID,Manager (PI),Cluster Name,Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost\n"
-            "2023-01,namespace1,namespace1,,test-cluster,,,,,35,OpenShift CPU,0.013,0.46\n"
+            "Invoice Month,Report Start Time,Report End Time,Project - Allocation,Project - Allocation ID,Manager (PI),Cluster Name,Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost,Generated At\n"
+            "2023-01,2023-01-01T00:00:00+00:00,2023-01-03T00:00:00+00:00,namespace1,namespace1,,test-cluster,,,,,35,OpenShift CPU,0.013,0.46,2023-01-05T00:00:00+00:00\n"
         )
 
         with tempfile.NamedTemporaryFile(mode="w+") as tmp:
             utils.write_metrics_by_namespace(
                 condensed_metrics_dict=test_metrics_dict,
                 file_name=tmp.name,
-                report_month="2023-01",
+                report_metadata=self.report_metadata,
                 su_definitions=SU_DEFINITIONS,
                 rates=RATES,
-                cluster_name="test-cluster",
             )
             self.assertEqual(tmp.read(), expected_output)
 
@@ -447,22 +461,29 @@ class TestWriteMetricsWithIgnoreHours(TestCase):
             },
         }
 
+        self.report_metadata = invoice.ReportMetadata(
+            report_month="2023-01",
+            cluster_name="test-cluster",
+            report_start_time=datetime(2023, 1, 1, tzinfo=UTC),
+            report_end_time=datetime(2023, 1, 3, tzinfo=UTC),
+            generated_at=datetime(2023, 1, 5, tzinfo=UTC),
+        )
+
     def test_write_metrics_by_namespace_with_ignore_hours(self):
         expected_output = (
-            "Invoice Month,Project - Allocation,Project - Allocation ID,Manager (PI),Cluster Name,Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost\n"
-            "2023-01,namespace1,namespace1,,test-cluster,,,,,12,OpenShift CPU,0.013,0.16\n"
-            "2023-01,namespace2,namespace2,,test-cluster,,,,,170,OpenShift CPU,0.013,2.21\n"
-            "2023-01,namespace2,namespace2,,test-cluster,,,,,37,OpenShift GPUA100SXM4,2.078,76.89\n"
+            "Invoice Month,Report Start Time,Report End Time,Project - Allocation,Project - Allocation ID,Manager (PI),Cluster Name,Invoice Email,Invoice Address,Institution,Institution - Specific Code,SU Hours (GBhr or SUhr),SU Type,Rate,Cost,Generated At\n"
+            "2023-01,2023-01-01T00:00:00+00:00,2023-01-03T00:00:00+00:00,namespace1,namespace1,,test-cluster,,,,,12,OpenShift CPU,0.013,0.16,2023-01-05T00:00:00+00:00\n"
+            "2023-01,2023-01-01T00:00:00+00:00,2023-01-03T00:00:00+00:00,namespace2,namespace2,,test-cluster,,,,,170,OpenShift CPU,0.013,2.21,2023-01-05T00:00:00+00:00\n"
+            "2023-01,2023-01-01T00:00:00+00:00,2023-01-03T00:00:00+00:00,namespace2,namespace2,,test-cluster,,,,,37,OpenShift GPUA100SXM4,2.078,76.89,2023-01-05T00:00:00+00:00\n"
         )
 
         with tempfile.NamedTemporaryFile(mode="w+") as tmp:
             utils.write_metrics_by_namespace(
                 condensed_metrics_dict=self.test_metrics_dict,
                 file_name=tmp.name,
-                report_month="2023-01",
+                report_metadata=self.report_metadata,
                 rates=RATES,
                 su_definitions=SU_DEFINITIONS,
-                cluster_name="test-cluster",
                 ignore_hours=self.ignore_times,
             )
             self.assertEqual(tmp.read(), expected_output)

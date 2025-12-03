@@ -60,10 +60,9 @@ def csv_writer(rows, file_name):
 def write_metrics_by_namespace(
     condensed_metrics_dict,
     file_name,
-    report_month,
+    report_metadata: invoice.ReportMetadata,
     rates,
     su_definitions,
-    cluster_name,
     ignore_hours=None,
 ):
     """
@@ -73,6 +72,8 @@ def write_metrics_by_namespace(
     rows = []
     headers = [
         "Invoice Month",
+        "Report Start Time",
+        "Report End Time",
         "Project - Allocation",
         "Project - Allocation ID",
         "Manager (PI)",
@@ -85,6 +86,7 @@ def write_metrics_by_namespace(
         "SU Type",
         "Rate",
         "Cost",
+        "Generated At",
     ]
 
     rows.append(headers)
@@ -92,15 +94,8 @@ def write_metrics_by_namespace(
     for namespace, pods in condensed_metrics_dict.items():
         if namespace not in invoices:
             project_invoice = invoice.ProjectInvoce(
-                invoice_month=report_month,
                 project=namespace,
                 project_id=namespace,
-                pi="",
-                cluster_name=cluster_name,
-                invoice_email="",
-                invoice_address="",
-                intitution="",
-                institution_specific_code="",
                 rates=rates,
                 su_definitions=su_definitions,
                 ignore_hours=ignore_hours,
@@ -128,7 +123,7 @@ def write_metrics_by_namespace(
                 project_invoice.add_pod(pod_obj)
 
     for project_invoice in invoices.values():
-        rows.extend(project_invoice.generate_invoice_rows(report_month))
+        rows.extend(project_invoice.generate_invoice_rows(report_metadata))
 
     csv_writer(rows, file_name)
 
@@ -185,11 +180,10 @@ def write_metrics_by_pod(
 def write_metrics_by_classes(
     condensed_metrics_dict,
     file_name,
-    report_month,
+    report_metadata: invoice.ReportMetadata,
     rates,
     namespaces_with_classes,
     su_definitions,
-    cluster_name,
     ignore_hours=None,
 ):
     """
@@ -202,6 +196,8 @@ def write_metrics_by_classes(
     rows = []
     headers = [
         "Invoice Month",
+        "Report Start Time",
+        "Report End Time",
         "Project - Allocation",
         "Project - Allocation ID",
         "Manager (PI)",
@@ -214,6 +210,7 @@ def write_metrics_by_classes(
         "SU Type",
         "Rate",
         "Cost",
+        "Generated At",
     ]
 
     rows.append(headers)
@@ -231,15 +228,8 @@ def write_metrics_by_classes(
 
             if project_name not in invoices:
                 project_invoice = invoice.ProjectInvoce(
-                    invoice_month=report_month,
                     project=project_name,
                     project_id=project_name,
-                    pi="",
-                    cluster_name=cluster_name,
-                    invoice_email="",
-                    invoice_address="",
-                    intitution="",
-                    institution_specific_code="",
                     su_definitions=su_definitions,
                     rates=rates,
                     ignore_hours=ignore_hours,
@@ -265,6 +255,6 @@ def write_metrics_by_classes(
                 project_invoice.add_pod(pod_obj)
 
     for project_invoice in invoices.values():
-        rows.extend(project_invoice.generate_invoice_rows(report_month))
+        rows.extend(project_invoice.generate_invoice_rows(report_metadata))
 
     csv_writer(rows, file_name)
