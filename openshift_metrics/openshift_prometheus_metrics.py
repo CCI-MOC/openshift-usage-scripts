@@ -26,6 +26,7 @@ from openshift_metrics.config import (
     OPENSHIFT_PROMETHEUS_URL,
     OPENSHIFT_TOKEN,
     S3_METRICS_BUCKET,
+    PROM_QUERY_INTERVAL_MINUTES,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -89,14 +90,17 @@ def main():
         output_file = f"metrics-{report_start_date}-to-{report_end_date}.json"
 
     logger.info(
-        f"Generating report starting {report_start_date} and ending {report_end_date} in {output_file}"
+        f"Generating report starting {report_start_date} and ending {report_end_date} in {output_file} with interval {PROM_QUERY_INTERVAL_MINUTES} minute"
     )
 
-    prom_client = PrometheusClient(openshift_url, OPENSHIFT_TOKEN)
+    prom_client = PrometheusClient(
+        openshift_url, OPENSHIFT_TOKEN, PROM_QUERY_INTERVAL_MINUTES
+    )
 
     metrics_dict = {}
     metrics_dict["start_date"] = report_start_date
     metrics_dict["end_date"] = report_end_date
+    metrics_dict["interval_minutes"] = PROM_QUERY_INTERVAL_MINUTES
     metrics_dict["cluster_name"] = URL_CLUSTER_NAME_MAPPING.get(
         args.openshift_url, args.openshift_url
     )

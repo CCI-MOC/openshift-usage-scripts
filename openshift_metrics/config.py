@@ -33,3 +33,7 @@ RATE_GPU_H100_SU = os.getenv("RATE_GPU_H100_SU")
 
 # Legacy rate (for backward compatibility)
 GPU_A100_RATE = os.getenv("GPU_A100_RATE")
+
+# Prometheus Query Configuration
+PROM_QUERY_INTERVAL_MINUTES = int(os.getenv("PROM_QUERY_INTERVAL_MINUTES", 15))
+assert PROM_QUERY_INTERVAL_MINUTES >= 1, "Query interval must be at least 1 minute"
