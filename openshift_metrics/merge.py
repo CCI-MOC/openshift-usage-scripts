@@ -164,11 +164,6 @@ def main():
         datetime.strptime(report_start_date, "%Y-%m-%d"), "%Y-%m"
     )
 
-    if USE_NERC_RATES is None:
-        raise ValueError(
-            "USE_NERC_RATES environment variable must be set to 'true' or 'false'"
-        )
-
     if USE_NERC_RATES:
         logger.info("Using nerc rates for rates and outages")
         rates_data = rates.load_from_url()
@@ -182,10 +177,8 @@ def main():
             gpu_h100=rates_data.get_value_at("GPUH100 SU Rate", report_month, Decimal),
         )
         outage_data = outages.load_from_url()
-        report_start_date_dt = datetime.strptime(report_start_date, "%Y-%m-%d")
-        report_end_date_dt = datetime.strptime(report_end_date, "%Y-%m-%d")
         ignore_hours = outage_data.get_outages_during(
-            report_start_date_dt, report_end_date_dt, cluster_name
+            report_start_date, report_end_date, cluster_name
         )
     else:
         if RATE_CPU_SU is None:
@@ -236,11 +229,6 @@ def main():
 
     if report_start_date_dt.month != report_end_date_dt.month:
         logger.warning("The report spans multiple months")
-        report_month += " to " + datetime.strftime(report_end_date_dt, "%Y-%m")
-
-    logger.info(
-        f"Generating report from {report_start_date_dt} to {report_end_date_dt + timedelta(days=1)} for {cluster_name}"
-    )
 
     report_start_date = report_start_date_dt
     report_end_date = report_end_date_dt
