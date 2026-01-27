@@ -13,7 +13,16 @@ from nerc_rates import rates, outages
 
 from openshift_metrics import utils, invoice
 from openshift_metrics.metrics_processor import MetricsProcessor
-from openshift_metrics.config import S3_INVOICE_BUCKET, PROM_QUERY_INTERVAL_MINUTES
+from openshift_metrics.config import (
+    S3_INVOICE_BUCKET,
+    USE_NERC_RATES,
+    RATE_CPU_SU,
+    RATE_GPU_V100_SU,
+    RATE_GPU_A100SXM4_SU,
+    RATE_GPU_A100_SU,
+    RATE_GPU_H100_SU,
+    PROM_QUERY_INTERVAL_MINUTES,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -90,16 +99,6 @@ def main():
         nargs="*",
         help="List of timestamp ranges in UTC to ignore in the format 'YYYY-MM-DDTHH:MM:SS,YYYY-MM-DDTHH:MM:SS'",
     )
-    parser.add_argument(
-        "--use-nerc-rates",
-        action="store_true",
-        help="Use rates from the nerc-rates repo",
-    )
-    parser.add_argument("--rate-cpu-su", type=Decimal)
-    parser.add_argument("--rate-gpu-v100-su", type=Decimal)
-    parser.add_argument("--rate-gpu-a100sxm4-su", type=Decimal)
-    parser.add_argument("--rate-gpu-a100-su", type=Decimal)
-    parser.add_argument("--rate-gpu-h100-su", type=Decimal)
 
     args = parser.parse_args()
     files = args.files
@@ -165,7 +164,7 @@ def main():
         datetime.strptime(report_start_date, "%Y-%m-%d"), "%Y-%m"
     )
 
-    if args.use_nerc_rates:
+    if USE_NERC_RATES:
         logger.info("Using nerc rates for rates and outages")
         rates_data = rates.load_from_url()
         invoice_rates = invoice.Rates(
@@ -182,12 +181,23 @@ def main():
             report_start_date, report_end_date, cluster_name
         )
     else:
+        if RATE_CPU_SU is None:
+            raise ValueError("RATE_CPU_SU environment variable must be set")
+        if RATE_GPU_V100_SU is None:
+            raise ValueError("RATE_GPU_V100_SU environment variable must be set")
+        if RATE_GPU_A100SXM4_SU is None:
+            raise ValueError("RATE_GPU_A100SXM4_SU environment variable must be set")
+        if RATE_GPU_A100_SU is None:
+            raise ValueError("RATE_GPU_A100_SU environment variable must be set")
+        if RATE_GPU_H100_SU is None:
+            raise ValueError("RATE_GPU_H100_SU environment variable must be set")
+
         invoice_rates = invoice.Rates(
-            cpu=Decimal(args.rate_cpu_su),
-            gpu_a100=Decimal(args.rate_gpu_a100_su),
-            gpu_a100sxm4=Decimal(args.rate_gpu_a100sxm4_su),
-            gpu_v100=Decimal(args.rate_gpu_v100_su),
-            gpu_h100=Decimal(args.rate_gpu_h100_su),
+            cpu=Decimal(RATE_CPU_SU),
+            gpu_a100=Decimal(RATE_GPU_A100_SU),
+            gpu_a100sxm4=Decimal(RATE_GPU_A100SXM4_SU),
+            gpu_v100=Decimal(RATE_GPU_V100_SU),
+            gpu_h100=Decimal(RATE_GPU_H100_SU),
         )
         ignore_hours = args.ignore_hours
 
@@ -210,14 +220,18 @@ def main():
     else:
         pod_report_file = f"Pod NERC OpenShift {report_month}.csv"
 
-    report_start_date = datetime.strptime(report_start_date, "%Y-%m-%d").replace(
+    report_start_date_dt = datetime.strptime(report_start_date, "%Y-%m-%d").replace(
         tzinfo=UTC
     )
-    report_end_date = datetime.strptime(report_end_date, "%Y-%m-%d").replace(tzinfo=UTC)
-
-    logger.info(
-        f"Generating report from {report_start_date} to {report_end_date + timedelta(days=1)} for {cluster_name}"
+    report_end_date_dt = datetime.strptime(report_end_date, "%Y-%m-%d").replace(
+        tzinfo=UTC
     )
+
+    if report_start_date_dt.month != report_end_date_dt.month:
+        logger.warning("The report spans multiple months")
+
+    report_start_date = report_start_date_dt
+    report_end_date = report_end_date_dt
 
     condensed_metrics_dict = processor.condense_metrics(
         ["cpu_request", "memory_request", "gpu_request", "gpu_type"]
