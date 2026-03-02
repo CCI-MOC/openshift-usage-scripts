@@ -7,8 +7,9 @@ import logging
 import argparse
 from datetime import datetime, UTC, timedelta
 import json
-from typing import Tuple
+from typing import List, Tuple
 from decimal import Decimal
+from dataclasses import dataclass
 from nerc_rates import rates, outages
 
 from openshift_metrics import utils, invoice
@@ -18,6 +19,102 @@ from openshift_metrics.config import S3_INVOICE_BUCKET, PROM_QUERY_INTERVAL_MINU
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+@dataclass
+class MetricsMetadata:
+    cluster_name: str
+    report_start_date: str
+    report_end_date: str
+    interval_minutes: int
+
+    @property
+    def report_month(self) -> str:
+        return datetime.strftime(
+            datetime.strptime(self.report_start_date, "%Y-%m-%d"), "%Y-%m"
+        )
+
+def load_metrics_metadata(files: List[str]) -> MetricsMetadata:
+    """
+    Load only the metadata from the metrics files.
+
+    We need to load the metadata before the actual data because we need to know
+    interval_minutes and ensure that it's the same for all the files.
+    """
+    cluster_name = None
+    report_start_date = None
+    report_end_date = None
+    interval_minutes = None
+
+    for file in files:
+        with open(file, "r") as jsonfile:
+            metrics_from_file = json.load(jsonfile)
+            if cluster_name is None:
+                cluster_name = metrics_from_file.get("cluster_name")
+
+            if interval_minutes is None:
+                interval_minutes = metrics_from_file.get("interval_minutes")
+            else:
+                interval_minutes_from_file = metrics_from_file["interval_minutes"]
+                if interval_minutes != interval_minutes_from_file:
+                    sys.exit(
+                        f"Cannot process files with different intervals {interval_minutes} != {interval_minutes_from_file}"
+                    )
+
+            if report_start_date is None:
+                report_start_date = metrics_from_file["start_date"]
+            elif compare_dates(metrics_from_file["start_date"], report_start_date):
+                report_start_date = metrics_from_file["start_date"]
+
+            if report_end_date is None:
+                report_end_date = metrics_from_file["end_date"]
+            elif compare_dates(report_end_date, metrics_from_file["end_date"]):
+                report_end_date = metrics_from_file["end_date"]
+
+    if cluster_name is None:
+        cluster_name = "Unknown Cluster"
+
+    if interval_minutes is None:
+        logger.info(
+            f"No prometheus query interval minutes found in the given set of files. Using the provided interval: {PROM_QUERY_INTERVAL_MINUTES} minute(s)"
+        )
+        interval_minutes = PROM_QUERY_INTERVAL_MINUTES
+    else:
+        logger.info(
+            f"Prometheus Query interval set to {interval_minutes} minute(s) from file"
+        )
+
+    if report_start_date is None or report_end_date is None:
+        sys.exit(
+            "Could not find report start date or end date in the given set of files."
+        )
+
+    return MetricsMetadata(
+        cluster_name=cluster_name,
+        report_start_date=report_start_date,
+        report_end_date=report_end_date,
+        interval_minutes=interval_minutes,
+    )
+
+
+def load_and_merge_metrics(interval_minutes, files: List[str]) -> MetricsProcessor:
+    """Load and merge metrics
+
+    Loads metrics from provided json files and then returns a processor
+    that has all the merged data.
+    """
+    processor = MetricsProcessor(interval_minutes)
+    for file in files:
+        with open(file, "r") as jsonfile:
+            metrics_from_file = json.load(jsonfile)
+            cpu_request_metrics = metrics_from_file["cpu_metrics"]
+            memory_request_metrics = metrics_from_file["memory_metrics"]
+            gpu_request_metrics = metrics_from_file.get("gpu_metrics", None)
+            processor.merge_metrics("cpu_request", cpu_request_metrics)
+            processor.merge_metrics("memory_request", memory_request_metrics)
+            if gpu_request_metrics is not None:
+                processor.merge_metrics("gpu_request", gpu_request_metrics)
+    logger.info(f"Total metric files read: {len(files)}")
+    return processor
 
 def compare_dates(date_str1, date_str2):
     """Returns true is date1 is earlier than date2"""
@@ -104,66 +201,14 @@ def main():
     args = parser.parse_args()
     files = args.files
 
-    report_start_date = None
-    report_end_date = None
-    cluster_name = None
-    interval_minutes = None
+    metrics_metadata = load_metrics_metadata(files)
 
-    for file in files:
-        with open(file, "r") as jsonfile:
-            metrics_from_file = json.load(jsonfile)
-            if interval_minutes is None:
-                interval_minutes = metrics_from_file.get("interval_minutes")
-            else:
-                interval_minutes_from_file = metrics_from_file["interval_minutes"]
-                if interval_minutes != interval_minutes_from_file:
-                    sys.exit(
-                        f"Cannot process files with different intervals {interval_minutes} != {interval_minutes_from_file}"
-                    )
+    report_start_date = metrics_metadata.report_start_date
+    report_end_date = metrics_metadata.report_end_date
+    cluster_name = metrics_metadata.cluster_name
+    report_month = metrics_metadata.report_month
 
-    if interval_minutes is None:
-        logger.info(
-            f"No prometheus query interval minutes found in the given set of files. Using the provided interval: {PROM_QUERY_INTERVAL_MINUTES} minute(s)"
-        )
-        interval_minutes = PROM_QUERY_INTERVAL_MINUTES
-    else:
-        logger.info(
-            f"Prometheus Query interval set to {interval_minutes} minute(s) from file"
-        )
-
-    processor = MetricsProcessor(interval_minutes)
-
-    for file in files:
-        with open(file, "r") as jsonfile:
-            metrics_from_file = json.load(jsonfile)
-            if cluster_name is None:
-                cluster_name = metrics_from_file.get("cluster_name")
-            cpu_request_metrics = metrics_from_file["cpu_metrics"]
-            memory_request_metrics = metrics_from_file["memory_metrics"]
-            gpu_request_metrics = metrics_from_file.get("gpu_metrics", None)
-            processor.merge_metrics("cpu_request", cpu_request_metrics)
-            processor.merge_metrics("memory_request", memory_request_metrics)
-            if gpu_request_metrics is not None:
-                processor.merge_metrics("gpu_request", gpu_request_metrics)
-
-            if report_start_date is None:
-                report_start_date = metrics_from_file["start_date"]
-            elif compare_dates(metrics_from_file["start_date"], report_start_date):
-                report_start_date = metrics_from_file["start_date"]
-
-            if report_end_date is None:
-                report_end_date = metrics_from_file["end_date"]
-            elif compare_dates(report_end_date, metrics_from_file["end_date"]):
-                report_end_date = metrics_from_file["end_date"]
-
-    if cluster_name is None:
-        cluster_name = "Unknown Cluster"
-
-    logger.info(f"Total metric files read: {len(files)}")
-
-    report_month = datetime.strftime(
-        datetime.strptime(report_start_date, "%Y-%m-%d"), "%Y-%m"
-    )
+    processor = load_and_merge_metrics(metrics_metadata.interval_minutes, files)
 
     if args.use_nerc_rates:
         logger.info("Using nerc rates for rates and outages")
