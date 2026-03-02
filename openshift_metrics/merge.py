@@ -243,17 +243,17 @@ def main():
     if args.invoice_file:
         invoice_file = args.invoice_file
     else:
-        invoice_file = f"NERC OpenShift {report_month}.csv"
+        invoice_file = f"{cluster_name} {report_month}.csv"
 
     if args.class_invoice_file:
         class_invoice_file = args.class_invoice_file
     else:
-        class_invoice_file = f"NERC OpenShift Classes {report_month}.csv"
+        class_invoice_file = f"Classes-{cluster_name} {report_month}.csv"
 
     if args.pod_report_file:
         pod_report_file = args.pod_report_file
     else:
-        pod_report_file = f"Pod NERC OpenShift {report_month}.csv"
+        pod_report_file = f"Pod-{cluster_name} {report_month}.csv"
 
     report_start_date = datetime.strptime(report_start_date, "%Y-%m-%d").replace(
         tzinfo=UTC
