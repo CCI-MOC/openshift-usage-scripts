@@ -41,6 +41,7 @@ class MetricsMetadata:
     def end_time_utc(self) -> datetime:
         return datetime.strptime(self.report_end_date, "%Y-%m-%d").replace(tzinfo=UTC)
 
+
 def load_metrics_metadata(files: List[str]) -> MetricsMetadata:
     """
     Load only the metadata from the metrics files.
@@ -124,6 +125,7 @@ def load_and_merge_metrics(interval_minutes, files: List[str]) -> MetricsProcess
     logger.info(f"Total metric files read: {len(files)}")
     return processor
 
+
 def compare_dates(date_str1, date_str2):
     """Returns true is date1 is earlier than date2"""
     date1 = datetime.strptime(date_str1, "%Y-%m-%d")
@@ -172,18 +174,26 @@ def get_su_definitions(report_month) -> dict:
     return su_definitions
 
 
-def get_rates_and_outages(args: argparse.Namespace, meta: MetricsMetadata) -> Tuple[invoice.Rates, list]:
+def get_rates_and_outages(
+    args: argparse.Namespace, meta: MetricsMetadata
+) -> Tuple[invoice.Rates, list]:
     if args.use_nerc_rates:
         logger.info("Using nerc rates for rates and outages")
         rates_data = rates.load_from_url()
         invoice_rates = invoice.Rates(
             cpu=rates_data.get_value_at("CPU SU Rate", meta.report_month, Decimal),
-            gpu_a100=rates_data.get_value_at("GPUA100 SU Rate", meta.report_month, Decimal),
+            gpu_a100=rates_data.get_value_at(
+                "GPUA100 SU Rate", meta.report_month, Decimal
+            ),
             gpu_a100sxm4=rates_data.get_value_at(
                 "GPUA100SXM4 SU Rate", meta.report_month, Decimal
             ),
-            gpu_v100=rates_data.get_value_at("GPUV100 SU Rate", meta.report_month, Decimal),
-            gpu_h100=rates_data.get_value_at("GPUH100 SU Rate", meta.report_month, Decimal),
+            gpu_v100=rates_data.get_value_at(
+                "GPUV100 SU Rate", meta.report_month, Decimal
+            ),
+            gpu_h100=rates_data.get_value_at(
+                "GPUH100 SU Rate", meta.report_month, Decimal
+            ),
         )
         outage_data = outages.load_from_url()
         ignore_hours = outage_data.get_outages_during(
@@ -206,7 +216,12 @@ def get_rates_and_outages(args: argparse.Namespace, meta: MetricsMetadata) -> Tu
     return invoice_rates, ignore_hours
 
 
-def upload_reports_to_s3(report_metadata: invoice.ReportMetadata, invoice_file: str, pod_report_file: str, class_invoice_file: str):
+def upload_reports_to_s3(
+    report_metadata: invoice.ReportMetadata,
+    invoice_file: str,
+    pod_report_file: str,
+    class_invoice_file: str,
+):
     report_month = report_metadata.report_month
     cluster_name = report_metadata.cluster_name
     report_date = report_metadata.report_end_time.strftime("%Y-%m-%d")
@@ -218,8 +233,12 @@ def upload_reports_to_s3(report_metadata: invoice.ReportMetadata, invoice_file: 
     primary_location = f"{main_root}/{cluster_name} {report_month}.csv"
     daily_report_location = f"{main_root}/{cluster_name} {report_date}.csv"
     secondary_location = f"{archive_root}/{cluster_name} {report_month} {timestamp}.csv"
-    pod_report_location = f"{archive_root}/Pod-{cluster_name} {report_month} {timestamp}.csv"
-    class_invoice_location = f"{archive_root}/Class-{cluster_name} {report_month} {timestamp}.csv"
+    pod_report_location = (
+        f"{archive_root}/Pod-{cluster_name} {report_month} {timestamp}.csv"
+    )
+    class_invoice_location = (
+        f"{archive_root}/Class-{cluster_name} {report_month} {timestamp}.csv"
+    )
 
     for file, location in [
         (invoice_file, primary_location),
@@ -275,7 +294,9 @@ def main():
     report_month = metrics_metadata.report_month
 
     invoice_file = args.invoice_file or f"{cluster_name} {report_month}.csv"
-    class_invoice_file = args.class_invoice_file or f"Classes-{cluster_name} {report_month}.csv"
+    class_invoice_file = (
+        args.class_invoice_file or f"Classes-{cluster_name} {report_month}.csv"
+    )
     pod_report_file = args.pod_report_file or f"Pod-{cluster_name} {report_month}.csv"
 
     logger.info(
@@ -326,10 +347,11 @@ def main():
     )
 
     if args.upload_to_s3:
-        upload_reports_to_s3(report_metadata=report_metadata,
-                             invoice_file=invoice_file,
-                             pod_report_file=pod_report_file,
-                             class_invoice_file=class_invoice_file
+        upload_reports_to_s3(
+            report_metadata=report_metadata,
+            invoice_file=invoice_file,
+            pod_report_file=pod_report_file,
+            class_invoice_file=class_invoice_file,
         )
 
 
