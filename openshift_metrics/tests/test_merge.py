@@ -1,5 +1,4 @@
 import pytest
-import json
 from decimal import Decimal
 
 from openshift_metrics.merge import (
@@ -57,18 +56,17 @@ def test_get_su_definitions(mocker):
     assert su_definitions["OpenShift GPUH100"]["GPUs"] == Decimal("67")
 
 
-def test_load_and_merge_data(tmp_path, mock_metrics_file1, mock_metrics_file2):
+def test_load_and_merge_data(
+    create_metrics_file, mock_metrics_file1, mock_metrics_file2
+):
     """
     Test that we can load metrics from the 2 files and merge the metrics from those.
 
     Note that we already have tests that test the merging of the data, this mostly
     focuses on the loading part.
     """
-    p1 = tmp_path / "file1.json"
-    p2 = tmp_path / "file2.json"
-
-    p1.write_text(json.dumps(mock_metrics_file1))
-    p2.write_text(json.dumps(mock_metrics_file2))
+    p1 = create_metrics_file(mock_metrics_file1, "file1.json")
+    p2 = create_metrics_file(mock_metrics_file2, "file2.json")
 
     processor = load_and_merge_metrics(2, [p1, p2])
 
@@ -85,13 +83,14 @@ def test_load_and_merge_data(tmp_path, mock_metrics_file1, mock_metrics_file2):
     assert pod1_metrics[180]["memory_request"] == 10
 
 
-def test_load_metrics_metadata(tmp_path, mock_metrics_file1, mock_metrics_file2):
+def test_load_metrics_metadata(
+    create_metrics_file, mock_metrics_file1, mock_metrics_file2
+):
     """Test we can load metadata from the metrics files."""
 
-    p1 = tmp_path / "file1.json"
-    p2 = tmp_path / "file2.json"
-    p1.write_text(json.dumps(mock_metrics_file1))
-    p2.write_text(json.dumps(mock_metrics_file2))
+    p1 = create_metrics_file(mock_metrics_file1, "file1.json")
+    p2 = create_metrics_file(mock_metrics_file2, "file2.json")
+
     metadata = load_metrics_metadata([p1, p2])
     assert metadata.cluster_name == "ocp-prod"
     assert metadata.report_start_date == "2025-09-20"
@@ -100,14 +99,12 @@ def test_load_metrics_metadata(tmp_path, mock_metrics_file1, mock_metrics_file2)
 
 
 def test_load_metrics_metadata_failure(
-    tmp_path, mock_metrics_file2, mock_metrics_file3
+    create_metrics_file, mock_metrics_file2, mock_metrics_file3
 ):
     """Test that loading metadata fails when files have different interval_minutes."""
 
-    p2 = tmp_path / "file2.json"
-    p3 = tmp_path / "file3.json"
-    p2.write_text(json.dumps(mock_metrics_file2))
-    p3.write_text(json.dumps(mock_metrics_file3))
+    p2 = create_metrics_file(mock_metrics_file2, "file2.json")
+    p3 = create_metrics_file(mock_metrics_file3, "file3.json")
 
     with pytest.raises(SystemExit):
         load_metrics_metadata([p2, p3])

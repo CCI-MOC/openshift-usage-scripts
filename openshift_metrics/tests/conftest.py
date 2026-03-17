@@ -1,4 +1,5 @@
 import pytest
+import json
 
 
 @pytest.fixture
@@ -141,3 +142,15 @@ def mock_metrics_file3():
         "cpu_metrics": cpu_metrics,
         "memory_metrics": memory_metrics,
     }
+
+
+@pytest.fixture
+def create_metrics_file(tmp_path):
+    """Fixture that returns the path to a file with json data"""
+
+    def _create(data, filename):
+        path = tmp_path / filename
+        path.write_text(json.dumps(data))
+        return path
+
+    return _create
