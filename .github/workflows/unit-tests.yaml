@@ -22,4 +22,4 @@ jobs:
 
       - name: Run unit tests
         run: |
-          python -m unittest openshift_metrics/tests/test_*
+          pytest openshift_metrics/tests/
