@@ -121,7 +121,7 @@ class Pod:
         return ServiceUnit(su_type, su_count, determining_resource)
 
     def get_runtime(
-        self, ignore_times: List[Tuple[datetime.datetime, datetime.datetime]] = None
+        self, ignore_times: List[Tuple[datetime.datetime, datetime.datetime]] | None = None
     ) -> Decimal:
         """Return runtime eligible for billing in hours"""
 
@@ -209,7 +209,7 @@ class ProjectInvoce:
     project_id: str
     rates: Rates
     su_definitions: dict
-    ignore_hours: Optional[List[Tuple[datetime.datetime, datetime.datetime]]] = None
+    ignore_hours: List[Tuple[datetime.datetime, datetime.datetime]] = field(default_factory=list)
     su_hours: dict = field(
         default_factory=lambda: {
             SU_CPU: 0,
