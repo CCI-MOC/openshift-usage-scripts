@@ -11,7 +11,6 @@ Also verifies that the produced JSON can be fed directly into merge.py.
 """
 
 import json
-import os
 from decimal import Decimal
 from unittest import mock
 
@@ -111,8 +110,12 @@ def mock_query_responses():
     }
 
 
-@mock.patch("openshift_metrics.openshift_prometheus_metrics.OPENSHIFT_TOKEN", "fake-token")
-@mock.patch("openshift_metrics.openshift_prometheus_metrics.PROM_QUERY_INTERVAL_MINUTES", 15)
+@mock.patch(
+    "openshift_metrics.openshift_prometheus_metrics.OPENSHIFT_TOKEN", "fake-token"
+)
+@mock.patch(
+    "openshift_metrics.openshift_prometheus_metrics.PROM_QUERY_INTERVAL_MINUTES", 15
+)
 @mock.patch("openshift_metrics.openshift_prometheus_metrics.PrometheusClient")
 def test_metrics_end_to_end(mock_client_class, mock_query_responses, tmp_path):
     """Full start-to-finish run with mocked Thanos queries covering all SU types."""

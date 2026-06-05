@@ -64,10 +64,22 @@ class MetricsProcessor:
         prev_t = start_t
         for t, v in values[1:]:
             if v != start_v or MetricsProcessor._was_pod_stopped(t, prev_t, interval):
-                segments.append({"start": start_t, "duration": prev_t - start_t + interval, key: start_v})
+                segments.append(
+                    {
+                        "start": start_t,
+                        "duration": prev_t - start_t + interval,
+                        key: start_v,
+                    }
+                )
                 start_t, start_v = t, v
             prev_t = t
-        segments.append({"start": start_t, "duration": values[-1][0] - start_t + interval, key: start_v})
+        segments.append(
+            {
+                "start": start_t,
+                "duration": values[-1][0] - start_t + interval,
+                key: start_v,
+            }
+        )
         return segments
 
     @staticmethod
@@ -94,7 +106,9 @@ class MetricsProcessor:
     }
 
     @staticmethod
-    def build_namespaces_dict(*segment_lists: list) -> dict:
+    def build_namespaces_dict(
+        *segment_lists: list, gpu_mapping: dict | None = None
+    ) -> dict:
         """Group condensed segments (from condense_metric_series) into the
         new pod-centric export format expected by load_segment_data().
         Only essential labels are kept.
@@ -109,7 +123,19 @@ class MetricsProcessor:
                     continue
                 namespaces.setdefault(ns, {}).setdefault(pod, {"segments": []})
                 # keep only essential labels + the metric value keys
-                clean = {k: v for k, v in seg.items() if k in essential or k in ("start", "duration", "cpu_request", "memory_request", "gpu_request")}
+                clean = {
+                    k: v
+                    for k, v in seg.items()
+                    if k in essential
+                    or k
+                    in (
+                        "start",
+                        "duration",
+                        "cpu_request",
+                        "memory_request",
+                        "gpu_request",
+                    )
+                }
                 # remove pod/namespace from the segment body (they are keys)
                 clean.pop("pod", None)
                 clean.pop("namespace", None)
@@ -117,12 +143,15 @@ class MetricsProcessor:
                 # Rename Prometheus label keys to the nice names used by the invoice layer
                 if "label_nvidia_com_gpu_product" in clean:
                     clean["gpu_type"] = clean.pop("label_nvidia_com_gpu_product")
+                elif gpu_mapping is not None and "gpu_request" in clean:
+                    # Fallback: resolve GPU type from the node-name mapping file
+                    node_name = clean.get("node")
+                    if node_name:
+                        clean["gpu_type"] = gpu_mapping.get(node_name, GPU_UNKNOWN_TYPE)
                 if "label_nvidia_com_gpu_machine" in clean:
                     clean["node_model"] = clean.pop("label_nvidia_com_gpu_machine")
                 if "resource" in clean and clean.get("gpu_request") is not None:
                     clean["gpu_resource"] = clean.pop("resource")
-                if "node" in clean:
-                    clean["node_hostname"] = clean.pop("node")
 
                 namespaces[ns][pod]["segments"].append(clean)
         return namespaces
@@ -134,11 +163,17 @@ class MetricsProcessor:
             for pod, pod_data in pods.items():
                 self.merged_data[ns].setdefault(pod, {"metrics": {}})
                 for seg in pod_data.get("segments", []):
+                    # Promote the class label to pod level so write_metrics_by_classes can find it
+                    if "label_nerc_mghpcc_org_class" in seg:
+                        self.merged_data[ns][pod].setdefault(
+                            "label_nerc_mghpcc_org_class",
+                            seg["label_nerc_mghpcc_org_class"],
+                        )
                     start = seg["start"]
-                    self.merged_data[ns][pod]["metrics"][start] = {
-                        k: v for k, v in seg.items() if k not in ("start", "duration")
-                    }
-                    self.merged_data[ns][pod]["metrics"][start]["duration"] = seg["duration"]
+                    # Use update so multiple segments at the same timestamp are merged,
+                    # not overwritten (e.g. separate CPU and memory series share start times)
+                    entry = self.merged_data[ns][pod]["metrics"].setdefault(start, {})
+                    entry.update({k: v for k, v in seg.items() if k != "start"})
 
     @staticmethod
     def insert_node_labels(node_labels: list, resource_request_metrics: list) -> list:
@@ -188,9 +223,7 @@ class MetricsProcessor:
         essential = MetricsProcessor.ESSENTIAL_LABEL_KEYS
         stripped = []
         for item in metric_list:
-            slim_metric = {
-                k: v for k, v in item["metric"].items() if k in essential
-            }
+            slim_metric = {k: v for k, v in item["metric"].items() if k in essential}
             stripped.append({"metric": slim_metric, "values": item["values"]})
 
         return stripped

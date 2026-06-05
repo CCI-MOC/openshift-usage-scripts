@@ -13,16 +13,46 @@ def mock_metrics_file1():
             "namespace1": {
                 "pod1": {
                     "segments": [
-                        {"start": 0, "duration": 60, "cpu_request": 10, "memory_request": 10},
-                        {"start": 60, "duration": 60, "cpu_request": 15, "memory_request": 15},
-                        {"start": 120, "duration": 60, "cpu_request": 20, "memory_request": 20},
+                        {
+                            "start": 0,
+                            "duration": 60,
+                            "cpu_request": 10,
+                            "memory_request": 10,
+                        },
+                        {
+                            "start": 60,
+                            "duration": 60,
+                            "cpu_request": 15,
+                            "memory_request": 15,
+                        },
+                        {
+                            "start": 120,
+                            "duration": 60,
+                            "cpu_request": 20,
+                            "memory_request": 20,
+                        },
                     ]
                 },
                 "pod2": {
                     "segments": [
-                        {"start": 0, "duration": 60, "cpu_request": 30, "memory_request": 30},
-                        {"start": 60, "duration": 60, "cpu_request": 35, "memory_request": 35},
-                        {"start": 120, "duration": 60, "cpu_request": 40, "memory_request": 40},
+                        {
+                            "start": 0,
+                            "duration": 60,
+                            "cpu_request": 30,
+                            "memory_request": 30,
+                        },
+                        {
+                            "start": 60,
+                            "duration": 60,
+                            "cpu_request": 35,
+                            "memory_request": 35,
+                        },
+                        {
+                            "start": 120,
+                            "duration": 60,
+                            "cpu_request": 40,
+                            "memory_request": 40,
+                        },
                     ]
                 },
             }
@@ -42,16 +72,46 @@ def mock_metrics_file2():
             "namespace1": {
                 "pod1": {
                     "segments": [
-                        {"start": 180, "duration": 60, "cpu_request": 10, "memory_request": 10},
-                        {"start": 240, "duration": 60, "cpu_request": 15, "memory_request": 15},
-                        {"start": 300, "duration": 60, "cpu_request": 20, "memory_request": 20},
+                        {
+                            "start": 180,
+                            "duration": 60,
+                            "cpu_request": 10,
+                            "memory_request": 10,
+                        },
+                        {
+                            "start": 240,
+                            "duration": 60,
+                            "cpu_request": 15,
+                            "memory_request": 15,
+                        },
+                        {
+                            "start": 300,
+                            "duration": 60,
+                            "cpu_request": 20,
+                            "memory_request": 20,
+                        },
                     ]
                 },
                 "pod2": {
                     "segments": [
-                        {"start": 180, "duration": 60, "cpu_request": 30, "memory_request": 30},
-                        {"start": 240, "duration": 60, "cpu_request": 35, "memory_request": 35},
-                        {"start": 300, "duration": 60, "cpu_request": 40, "memory_request": 40},
+                        {
+                            "start": 180,
+                            "duration": 60,
+                            "cpu_request": 30,
+                            "memory_request": 30,
+                        },
+                        {
+                            "start": 240,
+                            "duration": 60,
+                            "cpu_request": 35,
+                            "memory_request": 35,
+                        },
+                        {
+                            "start": 300,
+                            "duration": 60,
+                            "cpu_request": 40,
+                            "memory_request": 40,
+                        },
                     ]
                 },
             }

@@ -77,12 +77,8 @@ class TestInsertNodeLabels(TestCase):
         result = metrics_processor.MetricsProcessor.insert_node_labels(
             node_labels, resource_request_metrics
         )
-        self.assertEqual(
-            result[0]["metric"]["label_nvidia_com_gpu_product"], "A100"
-        )
-        self.assertEqual(
-            result[0]["metric"]["label_nvidia_com_gpu_machine"], "Dell"
-        )
+        self.assertEqual(result[0]["metric"]["label_nvidia_com_gpu_product"], "A100")
+        self.assertEqual(result[0]["metric"]["label_nvidia_com_gpu_machine"], "Dell")
 
 
 class TestStripEssentialLabels(TestCase):
@@ -115,14 +111,18 @@ class TestStripEssentialLabels(TestCase):
 class TestCondenseValues(TestCase):
     def test_condense_values(self):
         vals = [[0, "1"], [900, "1"], [1800, "2"]]
-        out = metrics_processor.MetricsProcessor._condense_values(vals, 900, "cpu_request")
+        out = metrics_processor.MetricsProcessor._condense_values(
+            vals, 900, "cpu_request"
+        )
         self.assertEqual(len(out), 2)
         self.assertEqual(out[0]["cpu_request"], "1")
         self.assertEqual(out[1]["cpu_request"], "2")
 
     def test_condense_metric_series(self):
         raw = [{"metric": {"pod": "p1"}, "values": [[0, "2"], [900, "2"]]}]
-        out = metrics_processor.MetricsProcessor.condense_metric_series(raw, 900, "cpu_request")
+        out = metrics_processor.MetricsProcessor.condense_metric_series(
+            raw, 900, "cpu_request"
+        )
         self.assertEqual(len(out), 1)
         self.assertEqual(out[0]["cpu_request"], "2")
         self.assertEqual(out[0]["pod"], "p1")
@@ -138,7 +138,9 @@ class TestProducerCondenseLogic(TestCase):
                 "values": [[0, 10], [900, 10], [1800, 10]],
             }
         ]
-        segments = metrics_processor.MetricsProcessor.condense_metric_series(raw, 900, "cpu_request")
+        segments = metrics_processor.MetricsProcessor.condense_metric_series(
+            raw, 900, "cpu_request"
+        )
         self.assertEqual(len(segments), 1)
         self.assertEqual(segments[0]["cpu_request"], 10)
         self.assertEqual(segments[0]["duration"], 2700)
@@ -150,7 +152,9 @@ class TestProducerCondenseLogic(TestCase):
                 "values": [[0, 10], [900, 10], [1800, 20], [2700, 20]],
             }
         ]
-        segments = metrics_processor.MetricsProcessor.condense_metric_series(raw, 900, "cpu_request")
+        segments = metrics_processor.MetricsProcessor.condense_metric_series(
+            raw, 900, "cpu_request"
+        )
         self.assertEqual(len(segments), 2)
         self.assertEqual(segments[0]["cpu_request"], 10)
         self.assertEqual(segments[1]["cpu_request"], 20)
@@ -174,7 +178,9 @@ class TestProducerCondenseLogic(TestCase):
                 "values": [[2700, 1], [3600, 1]],
             },
         ]
-        segments = metrics_processor.MetricsProcessor.condense_metric_series(raw, 900, "gpu_request")
+        segments = metrics_processor.MetricsProcessor.condense_metric_series(
+            raw, 900, "gpu_request"
+        )
         self.assertEqual(len(segments), 2)
         self.assertEqual(segments[0]["label_nvidia_com_gpu_product"], "V100")
         self.assertEqual(segments[1]["label_nvidia_com_gpu_product"], "A100")
@@ -186,17 +192,35 @@ class TestProducerCondenseLogic(TestCase):
                 "values": [[0, 5], [900, 5], [5400, 5]],  # large gap
             }
         ]
-        segments = metrics_processor.MetricsProcessor.condense_metric_series(raw, 900, "cpu_request")
+        segments = metrics_processor.MetricsProcessor.condense_metric_series(
+            raw, 900, "cpu_request"
+        )
         self.assertEqual(len(segments), 2)
 
     def test_build_namespaces_dict(self):
         cpu_segs = [
-            {"start": 0, "duration": 900, "cpu_request": 4, "pod": "p1", "namespace": "ns1", "node": "n1"}
+            {
+                "start": 0,
+                "duration": 900,
+                "cpu_request": 4,
+                "pod": "p1",
+                "namespace": "ns1",
+                "node": "n1",
+            }
         ]
         mem_segs = [
-            {"start": 0, "duration": 900, "memory_request": 8, "pod": "p1", "namespace": "ns1", "node": "n1"}
+            {
+                "start": 0,
+                "duration": 900,
+                "memory_request": 8,
+                "pod": "p1",
+                "namespace": "ns1",
+                "node": "n1",
+            }
         ]
-        namespaces = metrics_processor.MetricsProcessor.build_namespaces_dict(cpu_segs, mem_segs)
+        namespaces = metrics_processor.MetricsProcessor.build_namespaces_dict(
+            cpu_segs, mem_segs
+        )
         self.assertIn("ns1", namespaces)
         self.assertIn("p1", namespaces["ns1"])
         self.assertEqual(len(namespaces["ns1"]["p1"]["segments"]), 2)
@@ -214,11 +238,14 @@ class TestProducerCondenseLogic(TestCase):
         raw = [
             {
                 "metric": {"pod": "database", "namespace": "ns1", "node": "n1"},
-                "values": [[0, 1], [900, 1]],       # first lifetime, 1 core
+                "values": [[0, 1], [900, 1]],  # first lifetime, 1 core
             },
             {
                 "metric": {"pod": "database", "namespace": "ns1", "node": "n1"},
-                "values": [[1800, 4], [2700, 4]],   # recreated, 4 cores -> separate series
+                "values": [
+                    [1800, 4],
+                    [2700, 4],
+                ],  # recreated, 4 cores -> separate series
             },
         ]
         segments = metrics_processor.MetricsProcessor.condense_metric_series(
@@ -256,10 +283,10 @@ class TestProducerCondenseLogic(TestCase):
             {
                 "metric": {"pod": "database", "namespace": "ns1", "node": "n1"},
                 "values": [
-                    [0, 1],       # first lifetime starts
-                    [900, 1],     # still running (gap to next = 2700s = 3x interval)
-                    [3600, 1],    # recreated after downtime
-                    [4500, 1],    # still running
+                    [0, 1],  # first lifetime starts
+                    [900, 1],  # still running (gap to next = 2700s = 3x interval)
+                    [3600, 1],  # recreated after downtime
+                    [4500, 1],  # still running
                 ],
             },
         ]
@@ -304,12 +331,14 @@ class TestProducerCondenseLogic(TestCase):
                 ],
             }
         ]
-        segments = metrics_processor.MetricsProcessor.condense_metric_series(raw, 900, "cpu_request")
+        segments = metrics_processor.MetricsProcessor.condense_metric_series(
+            raw, 900, "cpu_request"
+        )
         self.assertEqual(len(segments), 2)
         self.assertEqual(segments[0]["start"], 0)
-        self.assertEqual(segments[0]["duration"], 2700)   # 0 -> 1800 + interval
+        self.assertEqual(segments[0]["duration"], 2700)  # 0 -> 1800 + interval
         self.assertEqual(segments[1]["start"], 7200)
-        self.assertEqual(segments[1]["duration"], 1800)   # 7200 -> 8100 + interval
+        self.assertEqual(segments[1]["duration"], 1800)  # 7200 -> 8100 + interval
 
     def test_pod_restart_within_interval_is_single_segment(self):
         """Tests that a pod killed and restarted within one query interval is treated as a single segment.
@@ -329,17 +358,150 @@ class TestProducerCondenseLogic(TestCase):
             {
                 "metric": {"pod": "database", "namespace": "ns1"},
                 "values": [
-                    [0, 2],      # 1:00 PM
-                    [900, 2],    # 1:15 PM (pod killed here)
-                    [1000, 2],   # 1:20 PM (pod restarted, same name/resources)
-                    [1900, 2],   # 1:35 PM
+                    [0, 2],  # 1:00 PM
+                    [900, 2],  # 1:15 PM (pod killed here)
+                    [1000, 2],  # 1:20 PM (pod restarted, same name/resources)
+                    [1900, 2],  # 1:35 PM
                 ],
             }
         ]
-        segments = metrics_processor.MetricsProcessor.condense_metric_series(raw, 900, "cpu_request")
+        segments = metrics_processor.MetricsProcessor.condense_metric_series(
+            raw, 900, "cpu_request"
+        )
         # The gap (100s) is less than the interval (900s), so it stays as one segment
         self.assertEqual(len(segments), 1)
         self.assertEqual(segments[0]["start"], 0)
         # Duration spans the full range including the gap: 1900 - 0 + 900 = 2800
         self.assertEqual(segments[0]["duration"], 2800)
         self.assertEqual(segments[0]["cpu_request"], 2)
+
+
+class TestLoadSegmentDataRegressions(TestCase):
+    """Regression tests for bugs in the load_segment_data / build_namespaces_dict pipeline."""
+
+    def test_cpu_and_memory_segments_at_same_timestamp_both_preserved(self):
+        """load_segment_data must merge segments at the same start time, not overwrite."""
+        namespaces = {
+            "ns1": {
+                "pod1": {
+                    "segments": [
+                        {"start": 0, "duration": 900, "cpu_request": 2},
+                        {"start": 0, "duration": 900, "memory_request": 4096},
+                    ]
+                }
+            }
+        }
+        processor = metrics_processor.MetricsProcessor()
+        processor.load_segment_data(namespaces)
+        entry = processor.merged_data["ns1"]["pod1"]["metrics"][0]
+        self.assertIn(
+            "cpu_request", entry, "cpu_request was overwritten by the memory segment"
+        )
+        self.assertIn(
+            "memory_request", entry, "memory_request was overwritten by the cpu segment"
+        )
+        self.assertEqual(entry["cpu_request"], 2)
+        self.assertEqual(entry["memory_request"], 4096)
+
+    def test_build_and_load_roundtrip_cpu_and_memory_both_survive(self):
+        """CPU and memory condensed as separate series must both appear after full roundtrip."""
+        cpu_segs = [
+            {
+                "start": 0,
+                "duration": 900,
+                "cpu_request": 4,
+                "pod": "p1",
+                "namespace": "ns1",
+                "node": "n1",
+            },
+        ]
+        mem_segs = [
+            {
+                "start": 0,
+                "duration": 900,
+                "memory_request": 8192,
+                "pod": "p1",
+                "namespace": "ns1",
+                "node": "n1",
+            },
+        ]
+        namespaces = metrics_processor.MetricsProcessor.build_namespaces_dict(
+            cpu_segs, mem_segs
+        )
+        processor = metrics_processor.MetricsProcessor()
+        processor.load_segment_data(namespaces)
+        entry = processor.merged_data["ns1"]["p1"]["metrics"][0]
+        self.assertIn("cpu_request", entry)
+        self.assertIn("memory_request", entry)
+        self.assertEqual(entry["cpu_request"], 4)
+        self.assertEqual(entry["memory_request"], 8192)
+
+    def test_class_label_promoted_to_pod_level(self):
+        """label_nerc_mghpcc_org_class in a segment must be lifted to pod level so write_metrics_by_classes can read it."""
+        namespaces = {
+            "ns1": {
+                "pod1": {
+                    "segments": [
+                        {
+                            "start": 0,
+                            "duration": 900,
+                            "cpu_request": 2,
+                            "label_nerc_mghpcc_org_class": "cs-101",
+                        },
+                    ]
+                }
+            }
+        }
+        processor = metrics_processor.MetricsProcessor()
+        processor.load_segment_data(namespaces)
+        pod_dict = processor.merged_data["ns1"]["pod1"]
+        self.assertEqual(
+            pod_dict.get("label_nerc_mghpcc_org_class"),
+            "cs-101",
+            "class label must be promoted to pod level, not buried in metrics[start]",
+        )
+
+    def test_gpu_mapping_fallback_applied_when_label_absent(self):
+        """build_namespaces_dict uses gpu_mapping to resolve gpu_type when the Prometheus label is missing."""
+        gpu_segs = [
+            {
+                "start": 0,
+                "duration": 900,
+                "gpu_request": 1,
+                "pod": "gpu-pod",
+                "namespace": "ns1",
+                "node": "wrk-gpu-1",
+                "resource": "nvidia.com/gpu",
+            },
+        ]
+        gpu_mapping = {"wrk-gpu-1": "NVIDIA-A100-SXM4-40GB"}
+        namespaces = metrics_processor.MetricsProcessor.build_namespaces_dict(
+            gpu_segs, gpu_mapping=gpu_mapping
+        )
+        seg = namespaces["ns1"]["gpu-pod"]["segments"][0]
+        self.assertEqual(
+            seg.get("gpu_type"),
+            "NVIDIA-A100-SXM4-40GB",
+            "gpu_type should fall back to gpu_mapping when label_nvidia_com_gpu_product is absent",
+        )
+
+    def test_gpu_label_takes_precedence_over_mapping(self):
+        """When label_nvidia_com_gpu_product is present, it wins over any gpu_mapping entry."""
+        gpu_segs = [
+            {
+                "start": 0,
+                "duration": 900,
+                "gpu_request": 1,
+                "pod": "gpu-pod",
+                "namespace": "ns1",
+                "node": "wrk-gpu-1",
+                "resource": "nvidia.com/gpu",
+                "label_nvidia_com_gpu_product": "NVIDIA-H100-80GB",
+            },
+        ]
+        gpu_mapping = {"wrk-gpu-1": "NVIDIA-A100-SXM4-40GB"}
+        namespaces = metrics_processor.MetricsProcessor.build_namespaces_dict(
+            gpu_segs, gpu_mapping=gpu_mapping
+        )
+        seg = namespaces["ns1"]["gpu-pod"]["segments"][0]
+        self.assertEqual(seg.get("gpu_type"), "NVIDIA-H100-80GB")

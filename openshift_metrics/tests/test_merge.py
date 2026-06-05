@@ -113,7 +113,12 @@ class TestIngestFormat:
                 "ns1": {
                     "pod1": {
                         "segments": [
-                            {"start": 100, "duration": 900, "cpu_request": 2, "memory_request": 4}
+                            {
+                                "start": 100,
+                                "duration": 900,
+                                "cpu_request": 2,
+                                "memory_request": 4,
+                            }
                         ]
                     }
                 }
@@ -129,7 +134,7 @@ class TestIngestFormat:
         """Tests GPU fields in segments -> asserts gpu_type, gpu_resource, node_hostname are preserved."""
         data = {
             "cluster_name": "ocp-prod",
-            "start_date": "2025-01-01" ,
+            "start_date": "2025-01-01",
             "end_date": "2025-01-01",
             "interval_minutes": 15,
             "namespaces": {
@@ -164,7 +169,9 @@ class TestIngestFormat:
             "interval_minutes": 15,
             "namespaces": {
                 "ns1": {
-                    "pod1": {"segments": [{"start": 0, "duration": 900, "cpu_request": 1}]}
+                    "pod1": {
+                        "segments": [{"start": 0, "duration": 900, "cpu_request": 1}]
+                    }
                 }
             },
         }
@@ -175,7 +182,9 @@ class TestIngestFormat:
             "interval_minutes": 15,
             "namespaces": {
                 "ns1": {
-                    "pod2": {"segments": [{"start": 1000, "duration": 900, "cpu_request": 2}]}
+                    "pod2": {
+                        "segments": [{"start": 1000, "duration": 900, "cpu_request": 2}]
+                    }
                 }
             },
         }
@@ -228,7 +237,9 @@ class TestIngestFormat:
             "interval_minutes": 15,
             "namespaces": {
                 "ns1": {
-                    "pod1": {"segments": [{"start": 0, "duration": 900, "cpu_request": 1}]}
+                    "pod1": {
+                        "segments": [{"start": 0, "duration": 900, "cpu_request": 1}]
+                    }
                 }
             },
         }
@@ -239,7 +250,9 @@ class TestIngestFormat:
             "interval_minutes": 15,
             "namespaces": {
                 "ns1": {
-                    "pod1": {"segments": [{"start": 1000, "duration": 900, "cpu_request": 2}]}
+                    "pod1": {
+                        "segments": [{"start": 1000, "duration": 900, "cpu_request": 2}]
+                    }
                 }
             },
         }
@@ -253,7 +266,14 @@ class TestIngestFormat:
         """Tests producer output shape -> asserts it can be loaded by ingest without data loss."""
         # Use only CPU for this round-trip to avoid timestamp collision in load_segment_data
         cpu_segs = [
-            {"start": 0, "duration": 1800, "cpu_request": 4, "pod": "p1", "namespace": "ns1", "node": "n1"}
+            {
+                "start": 0,
+                "duration": 1800,
+                "cpu_request": 4,
+                "pod": "p1",
+                "namespace": "ns1",
+                "node": "n1",
+            }
         ]
         namespaces = metrics_processor.MetricsProcessor.build_namespaces_dict(cpu_segs)
 
@@ -280,7 +300,12 @@ class TestIngestFormat:
                 "ns1": {
                     "long-running-pod": {
                         "segments": [
-                            {"start": 0, "duration": 86400, "cpu_request": 2, "memory_request": 4}
+                            {
+                                "start": 0,
+                                "duration": 86400,
+                                "cpu_request": 2,
+                                "memory_request": 4,
+                            }
                         ]
                     }
                 }
@@ -295,7 +320,12 @@ class TestIngestFormat:
                 "ns1": {
                     "long-running-pod": {
                         "segments": [
-                            {"start": 86400, "duration": 86400, "cpu_request": 2, "memory_request": 4}
+                            {
+                                "start": 86400,
+                                "duration": 86400,
+                                "cpu_request": 2,
+                                "memory_request": 4,
+                            }
                         ]
                     }
                 }

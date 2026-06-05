@@ -32,9 +32,9 @@ from openshift_metrics.config import (
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-CPU_REQUEST = 'kube_pod_resource_request{resource="cpu", node!="", namespace="ai-performance-profiling"} unless on(pod, namespace) kube_pod_status_unschedulable'
-MEMORY_REQUEST = 'kube_pod_resource_request{resource="memory", node!="", namespace="ai-performance-profiling"} unless on(pod, namespace) kube_pod_status_unschedulable'
-GPU_REQUEST = 'kube_pod_resource_request{resource=~"nvidia.com.*", node!="", namespace="ai-performance-profiling"} unless on(pod, namespace) kube_pod_status_unschedulable'
+CPU_REQUEST = 'kube_pod_resource_request{resource="cpu", node!=""} unless on(pod, namespace) kube_pod_status_unschedulable'
+MEMORY_REQUEST = 'kube_pod_resource_request{resource="memory", node!=""} unless on(pod, namespace) kube_pod_status_unschedulable'
+GPU_REQUEST = 'kube_pod_resource_request{resource=~"nvidia.com.*", node!=""} unless on(pod, namespace) kube_pod_status_unschedulable'
 KUBE_NODE_LABELS = 'kube_node_labels{label_nvidia_com_gpu_product!=""}'
 KUBE_POD_LABELS = 'kube_pod_labels{label_nerc_mghpcc_org_class!=""}'
 
@@ -109,7 +109,7 @@ def main():
         args.openshift_url, args.openshift_url
     )
 
-    mem_interval = PROM_QUERY_INTERVAL_MINUTES * 60
+    interval_seconds = PROM_QUERY_INTERVAL_MINUTES * 60
 
     cpu_segments = []
     mem_segments = []
@@ -140,7 +140,7 @@ def main():
             pod_labels or [], cpu_request_metrics
         )
         cpu_segments = MetricsProcessor.condense_metric_series(
-            labeled_cpu, mem_interval, "cpu_request"
+            labeled_cpu, interval_seconds, "cpu_request"
         )
 
     try:
@@ -148,13 +148,12 @@ def main():
             MEMORY_REQUEST, report_start_date, report_end_date
         )
         mem_segments = MetricsProcessor.condense_metric_series(
-            memory_request_metrics, mem_interval, "memory_request"
+            memory_request_metrics, interval_seconds, "memory_request"
         )
     except utils.EmptyResultError:
         logger.info(
             f"No memory metrics found for the period {report_start_date} to {report_end_date}"
         )
-
 
     gpu_request_metrics = None
     try:
@@ -179,12 +178,13 @@ def main():
             node_labels or [], gpu_request_metrics
         )
         gpu_segments = MetricsProcessor.condense_metric_series(
-            labeled_gpu, mem_interval, "gpu_request"
+            labeled_gpu, interval_seconds, "gpu_request"
         )
 
     # Build the new pod-centric format expected by the ingest pipeline
+    gpu_mapping = MetricsProcessor._load_gpu_mapping("gpu_node_map.json")
     metrics_dict["namespaces"] = MetricsProcessor.build_namespaces_dict(
-        cpu_segments, mem_segments, gpu_segments
+        cpu_segments, mem_segments, gpu_segments, gpu_mapping=gpu_mapping
     )
 
     month_year = datetime.strptime(report_start_date, "%Y-%m-%d").strftime("%Y-%m")
