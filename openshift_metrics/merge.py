@@ -106,22 +106,12 @@ def load_metrics_metadata(files: List[str]) -> MetricsMetadata:
 
 
 def load_and_merge_metrics(interval_minutes, files: List[str]) -> MetricsProcessor:
-    """Load and merge metrics
-
-    Loads metrics from provided json files and then returns a processor
-    that has all the merged data.
-    """
+    """Load metrics from new-format files (namespaces + segments)."""
     processor = MetricsProcessor(interval_minutes)
     for file in files:
         with open(file, "r") as jsonfile:
             metrics_from_file = json.load(jsonfile)
-            cpu_request_metrics = metrics_from_file["cpu_metrics"]
-            memory_request_metrics = metrics_from_file["memory_metrics"]
-            gpu_request_metrics = metrics_from_file.get("gpu_metrics", None)
-            processor.merge_metrics("cpu_request", cpu_request_metrics)
-            processor.merge_metrics("memory_request", memory_request_metrics)
-            if gpu_request_metrics is not None:
-                processor.merge_metrics("gpu_request", gpu_request_metrics)
+            processor.load_segment_data(metrics_from_file["namespaces"])
     logger.info(f"Total metric files read: {len(files)}")
     return processor
 
@@ -181,18 +171,22 @@ def get_rates_and_outages(
         logger.info("Using nerc rates for rates and outages")
         rates_data = rates.load_from_url()
         invoice_rates = invoice.Rates(
-            cpu=rates_data.get_value_at("CPU SU Rate", meta.report_month, Decimal),
-            gpu_a100=rates_data.get_value_at(
-                "GPUA100 SU Rate", meta.report_month, Decimal
+            cpu=Decimal(
+                rates_data.get_value_at("CPU SU Rate", meta.report_month, Decimal)
             ),
-            gpu_a100sxm4=rates_data.get_value_at(
-                "GPUA100SXM4 SU Rate", meta.report_month, Decimal
+            gpu_a100=Decimal(
+                rates_data.get_value_at("GPUA100 SU Rate", meta.report_month, Decimal)
             ),
-            gpu_v100=rates_data.get_value_at(
-                "GPUV100 SU Rate", meta.report_month, Decimal
+            gpu_a100sxm4=Decimal(
+                rates_data.get_value_at(
+                    "GPUA100SXM4 SU Rate", meta.report_month, Decimal
+                )
             ),
-            gpu_h100=rates_data.get_value_at(
-                "GPUH100 SU Rate", meta.report_month, Decimal
+            gpu_v100=Decimal(
+                rates_data.get_value_at("GPUV100 SU Rate", meta.report_month, Decimal)
+            ),
+            gpu_h100=Decimal(
+                rates_data.get_value_at("GPUH100 SU Rate", meta.report_month, Decimal)
             ),
         )
         outage_data = outages.load_from_url()
@@ -303,11 +297,8 @@ def main():
         f"Generating report from {metrics_metadata.start_time_utc} to {metrics_metadata.end_time_utc + timedelta(days=1)} for {cluster_name}"
     )
 
-    # load and merge the metrics from the files, followed by condensing the metrics.
     processor = load_and_merge_metrics(metrics_metadata.interval_minutes, files)
-    condensed_metrics_dict = processor.condense_metrics(
-        ["cpu_request", "memory_request", "gpu_request", "gpu_type"]
-    )
+    condensed_metrics_dict = processor.merged_data
 
     # gather invoice rates and su defitions.
     invoice_rates, ignore_hours = get_rates_and_outages(args, metrics_metadata)

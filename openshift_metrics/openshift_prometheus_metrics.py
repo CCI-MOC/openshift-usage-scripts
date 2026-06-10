@@ -94,6 +94,9 @@ def main():
         f"Generating report starting {report_start_date} and ending {report_end_date} in {output_file} with interval {PROM_QUERY_INTERVAL_MINUTES} minute"
     )
 
+    if not OPENSHIFT_TOKEN:
+        sys.exit("OPENSHIFT_TOKEN environment variable is required")
+
     prom_client = PrometheusClient(
         openshift_url, OPENSHIFT_TOKEN, PROM_QUERY_INTERVAL_MINUTES
     )
@@ -106,44 +109,83 @@ def main():
         args.openshift_url, args.openshift_url
     )
 
-    cpu_request_metrics = prom_client.query_metric(
-        CPU_REQUEST, report_start_date, report_end_date
-    )
+    interval_seconds = PROM_QUERY_INTERVAL_MINUTES * 60
 
+    cpu_segments = []
+    mem_segments = []
+    gpu_segments = []
+
+    # --- CPU request (independent query) ---
+    cpu_request_metrics = None
+    try:
+        cpu_request_metrics = prom_client.query_metric(
+            CPU_REQUEST, report_start_date, report_end_date
+        )
+    except utils.EmptyResultError:
+        logger.info(
+            f"No CPU metrics found for the period {report_start_date} to {report_end_date}"
+        )
+
+    # Pod labels (independent query, only needed for CPU enrichment)
+    pod_labels = None
     try:
         pod_labels = prom_client.query_metric(
             KUBE_POD_LABELS, report_start_date, report_end_date
         )
-        metrics_dict["cpu_metrics"] = MetricsProcessor.insert_pod_labels(
-            pod_labels, cpu_request_metrics
+    except utils.EmptyResultError:
+        logger.info("No pod labels found for the period")
+
+    if cpu_request_metrics:
+        labeled_cpu = MetricsProcessor.insert_pod_labels(
+            pod_labels or [], cpu_request_metrics
+        )
+        cpu_segments = MetricsProcessor.condense_metric_series(
+            labeled_cpu, interval_seconds, "cpu_request"
+        )
+
+    try:
+        memory_request_metrics = prom_client.query_metric(
+            MEMORY_REQUEST, report_start_date, report_end_date
+        )
+        mem_segments = MetricsProcessor.condense_metric_series(
+            memory_request_metrics, interval_seconds, "memory_request"
         )
     except utils.EmptyResultError:
         logger.info(
-            f"No pod labels found for the period {report_start_date} to {report_end_date}"
+            f"No memory metrics found for the period {report_start_date} to {report_end_date}"
         )
-        metrics_dict["cpu_metrics"] = cpu_request_metrics
 
-    memory_request_metrics = prom_client.query_metric(
-        MEMORY_REQUEST, report_start_date, report_end_date
-    )
-    metrics_dict["memory_metrics"] = memory_request_metrics
-
-    # because if nobody requests a GPU then we will get an empty set
+    gpu_request_metrics = None
     try:
         gpu_request_metrics = prom_client.query_metric(
             GPU_REQUEST, report_start_date, report_end_date
-        )
-        node_labels = prom_client.query_metric(
-            KUBE_NODE_LABELS, report_start_date, report_end_date
-        )
-        metrics_dict["gpu_metrics"] = MetricsProcessor.insert_node_labels(
-            node_labels, gpu_request_metrics
         )
     except utils.EmptyResultError:
         logger.info(
             f"No GPU metrics found for the period {report_start_date} to {report_end_date}"
         )
-        pass
+
+    node_labels = None
+    try:
+        node_labels = prom_client.query_metric(
+            KUBE_NODE_LABELS, report_start_date, report_end_date
+        )
+    except utils.EmptyResultError:
+        logger.info("No node labels found for the period")
+
+    if gpu_request_metrics:
+        labeled_gpu = MetricsProcessor.insert_node_labels(
+            node_labels or [], gpu_request_metrics
+        )
+        gpu_segments = MetricsProcessor.condense_metric_series(
+            labeled_gpu, interval_seconds, "gpu_request"
+        )
+
+    # Build the new pod-centric format expected by the ingest pipeline
+    gpu_mapping = MetricsProcessor._load_gpu_mapping("gpu_node_map.json")
+    metrics_dict["namespaces"] = MetricsProcessor.build_namespaces_dict(
+        cpu_segments, mem_segments, gpu_segments, gpu_mapping=gpu_mapping
+    )
 
     month_year = datetime.strptime(report_start_date, "%Y-%m-%d").strftime("%Y-%m")
 

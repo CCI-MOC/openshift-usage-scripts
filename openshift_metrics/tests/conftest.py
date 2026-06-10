@@ -4,143 +4,130 @@ import json
 
 @pytest.fixture
 def mock_metrics_file1():
-    cpu_metrics = [
-        {
-            "metric": {
-                "pod": "pod1",
-                "namespace": "namespace1",
-                "resource": "cpu",
-            },
-            "values": [
-                [0, 10],
-                [60, 15],
-                [120, 20],
-            ],
-        },
-        {
-            "metric": {
-                "pod": "pod2",
-                "namespace": "namespace1",
-                "resource": "cpu",
-            },
-            "values": [
-                [0, 30],
-                [60, 35],
-                [120, 40],
-            ],
-        },
-    ]
-    memory_metrics = [
-        {
-            "metric": {
-                "pod": "pod1",
-                "namespace": "namespace1",
-                "resource": "memory",
-            },
-            "values": [
-                [0, 10],
-                [60, 15],
-                [120, 20],
-            ],
-        },
-        {
-            "metric": {
-                "pod": "pod2",
-                "namespace": "namespace1",
-                "resource": "cpu",
-            },
-            "values": [
-                [0, 30],
-                [60, 35],
-                [120, 40],
-            ],
-        },
-    ]
     return {
         "cluster_name": "ocp-prod",
         "start_date": "2025-09-20",
         "end_date": "2025-09-20",
         "interval_minutes": 15,
-        "cpu_metrics": cpu_metrics,
-        "memory_metrics": memory_metrics,
+        "namespaces": {
+            "namespace1": {
+                "pod1": {
+                    "segments": [
+                        {
+                            "start": 0,
+                            "duration": 60,
+                            "cpu_request": 10,
+                            "memory_request": 10,
+                        },
+                        {
+                            "start": 60,
+                            "duration": 60,
+                            "cpu_request": 15,
+                            "memory_request": 15,
+                        },
+                        {
+                            "start": 120,
+                            "duration": 60,
+                            "cpu_request": 20,
+                            "memory_request": 20,
+                        },
+                    ]
+                },
+                "pod2": {
+                    "segments": [
+                        {
+                            "start": 0,
+                            "duration": 60,
+                            "cpu_request": 30,
+                            "memory_request": 30,
+                        },
+                        {
+                            "start": 60,
+                            "duration": 60,
+                            "cpu_request": 35,
+                            "memory_request": 35,
+                        },
+                        {
+                            "start": 120,
+                            "duration": 60,
+                            "cpu_request": 40,
+                            "memory_request": 40,
+                        },
+                    ]
+                },
+            }
+        },
     }
 
 
 @pytest.fixture
 def mock_metrics_file2():
-    cpu_metrics = [
-        {
-            "metric": {
-                "pod": "pod1",
-                "namespace": "namespace1",
-                "resource": "cpu",
-            },
-            "values": [
-                [180, 10],
-                [240, 15],
-                [300, 20],
-            ],
-        },
-        {
-            "metric": {
-                "pod": "pod2",
-                "namespace": "namespace1",
-                "resource": "cpu",
-            },
-            "values": [
-                [180, 30],
-                [240, 35],
-                [300, 40],
-            ],
-        },
-    ]
-    memory_metrics = [
-        {
-            "metric": {
-                "pod": "pod1",
-                "namespace": "namespace1",
-                "resource": "memory",
-            },
-            "values": [
-                [180, 10],
-                [240, 15],
-                [300, 20],
-            ],
-        },
-        {
-            "metric": {
-                "pod": "pod2",
-                "namespace": "namespace1",
-                "resource": "cpu",
-            },
-            "values": [
-                [180, 30],
-                [240, 35],
-                [300, 40],
-            ],
-        },
-    ]
+    # New pod-centric format (already condensed segments)
     return {
         "cluster_name": "ocp-prod",
         "start_date": "2025-09-21",
         "end_date": "2025-09-21",
-        "cpu_metrics": cpu_metrics,
-        "memory_metrics": memory_metrics,
         "interval_minutes": 15,
+        "namespaces": {
+            "namespace1": {
+                "pod1": {
+                    "segments": [
+                        {
+                            "start": 180,
+                            "duration": 60,
+                            "cpu_request": 10,
+                            "memory_request": 10,
+                        },
+                        {
+                            "start": 240,
+                            "duration": 60,
+                            "cpu_request": 15,
+                            "memory_request": 15,
+                        },
+                        {
+                            "start": 300,
+                            "duration": 60,
+                            "cpu_request": 20,
+                            "memory_request": 20,
+                        },
+                    ]
+                },
+                "pod2": {
+                    "segments": [
+                        {
+                            "start": 180,
+                            "duration": 60,
+                            "cpu_request": 30,
+                            "memory_request": 30,
+                        },
+                        {
+                            "start": 240,
+                            "duration": 60,
+                            "cpu_request": 35,
+                            "memory_request": 35,
+                        },
+                        {
+                            "start": 300,
+                            "duration": 60,
+                            "cpu_request": 40,
+                            "memory_request": 40,
+                        },
+                    ]
+                },
+            }
+        },
     }
 
 
 @pytest.fixture
 def mock_metrics_file3():
-    cpu_metrics = []
-    memory_metrics = []
+    # Empty file in new format
     return {
         "cluster_name": "ocp-prod",
         "start_date": "2025-09-21",
         "end_date": "2025-09-21",
         "interval_minutes": 3,  # file1 and file2 have 15 minutes
-        "cpu_metrics": cpu_metrics,
-        "memory_metrics": memory_metrics,
+        "namespaces": {},
     }
 
 
