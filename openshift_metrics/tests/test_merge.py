@@ -108,3 +108,185 @@ def test_load_metrics_metadata_failure(
 
     with pytest.raises(SystemExit):
         load_metrics_metadata([p2, p3])
+
+
+def test_load_pod_centric_schema(create_metrics_file):
+    """New namespaces/segments files are ingested without the legacy keys."""
+    data = {
+        "cluster_name": "ocp-prod",
+        "start_date": "2025-01-01",
+        "end_date": "2025-01-01",
+        "interval_minutes": 15,
+        "namespaces": {
+            "ns1": {
+                "pod1": {
+                    "segments": [
+                        {
+                            "start": 100,
+                            "duration": 900,
+                            "cpu_request": 2,
+                            "memory_request": 4,
+                        }
+                    ]
+                }
+            }
+        },
+    }
+    path = create_metrics_file(data, "new-schema.json")
+    processor = load_and_merge_metrics(15, [path])
+    metrics = processor.merged_data["ns1"]["pod1"]["metrics"]
+    assert metrics[100]["cpu_request"] == 2
+    assert metrics[100]["memory_request"] == 4
+    assert metrics[100]["duration"] == 900
+
+
+def test_load_legacy_and_pod_centric_schemas_together(
+    create_metrics_file, mock_metrics_file1
+):
+    """A report can mix historical Prometheus-series files and new files."""
+    new_data = {
+        "cluster_name": "ocp-prod",
+        "start_date": "2025-09-21",
+        "end_date": "2025-09-21",
+        "interval_minutes": 15,
+        "namespaces": {
+            "namespace1": {
+                "pod-new": {
+                    "segments": [
+                        {"start": 180, "duration": 60, "cpu_request": 8},
+                    ]
+                }
+            }
+        },
+    }
+    old_path = create_metrics_file(mock_metrics_file1, "old.json")
+    new_path = create_metrics_file(new_data, "new.json")
+    processor = load_and_merge_metrics(15, [old_path, new_path])
+    assert "pod1" in processor.merged_data["namespace1"]
+    assert (
+        processor.merged_data["namespace1"]["pod-new"]["metrics"][180]["cpu_request"]
+        == 8
+    )
+
+
+def test_file_with_both_schemas_uses_legacy_keys(create_metrics_file):
+    """If cpu_metrics is present, namespaces is ignored so data is not double counted."""
+    data = {
+        "cluster_name": "ocp-prod",
+        "start_date": "2025-01-01",
+        "end_date": "2025-01-01",
+        "interval_minutes": 15,
+        "cpu_metrics": [
+            {
+                "metric": {"pod": "pod1", "namespace": "ns1"},
+                "values": [[0, 3]],
+            }
+        ],
+        "memory_metrics": [
+            {
+                "metric": {"pod": "pod1", "namespace": "ns1"},
+                "values": [[0, 5]],
+            }
+        ],
+        "namespaces": {
+            "ns1": {
+                "pod1": {
+                    "segments": [
+                        {
+                            "start": 0,
+                            "duration": 900,
+                            "cpu_request": 99,
+                            "memory_request": 99,
+                        }
+                    ]
+                }
+            }
+        },
+    }
+    path = create_metrics_file(data, "both.json")
+    processor = load_and_merge_metrics(15, [path])
+    entry = processor.merged_data["ns1"]["pod1"]["metrics"][0]
+    assert entry["cpu_request"] == 3
+    assert entry["memory_request"] == 5
+
+
+def test_load_pod_centric_gpu_fields(create_metrics_file):
+    data = {
+        "cluster_name": "ocp-prod",
+        "start_date": "2025-01-01",
+        "end_date": "2025-01-01",
+        "interval_minutes": 15,
+        "namespaces": {
+            "ns1": {
+                "gpu-pod": {
+                    "segments": [
+                        {
+                            "start": 200,
+                            "duration": 1800,
+                            "gpu_request": 1,
+                            "gpu_type": "NVIDIA-A100",
+                            "gpu_resource": "nvidia.com/gpu",
+                        }
+                    ]
+                }
+            }
+        },
+    }
+    path = create_metrics_file(data, "gpu.json")
+    processor = load_and_merge_metrics(15, [path])
+    seg = processor.merged_data["ns1"]["gpu-pod"]["metrics"][200]
+    assert seg["gpu_request"] == 1
+    assert seg["gpu_type"] == "NVIDIA-A100"
+    assert seg["duration"] == 1800
+
+
+def test_load_empty_namespaces(create_metrics_file):
+    data = {
+        "cluster_name": "ocp-prod",
+        "start_date": "2025-01-01",
+        "end_date": "2025-01-01",
+        "interval_minutes": 15,
+        "namespaces": {},
+    }
+    path = create_metrics_file(data, "empty.json")
+    processor = load_and_merge_metrics(15, [path])
+    assert processor.merged_data == {}
+
+
+def test_two_pod_centric_files_merge(create_metrics_file):
+    day1 = {
+        "cluster_name": "ocp-prod",
+        "start_date": "2025-01-01",
+        "end_date": "2025-01-01",
+        "interval_minutes": 15,
+        "namespaces": {
+            "ns1": {
+                "long-pod": {
+                    "segments": [
+                        {"start": 0, "duration": 86400, "cpu_request": 2},
+                    ]
+                }
+            }
+        },
+    }
+    day2 = {
+        "cluster_name": "ocp-prod",
+        "start_date": "2025-01-02",
+        "end_date": "2025-01-02",
+        "interval_minutes": 15,
+        "namespaces": {
+            "ns1": {
+                "long-pod": {
+                    "segments": [
+                        {"start": 86400, "duration": 86400, "cpu_request": 2},
+                    ]
+                }
+            }
+        },
+    }
+    p1 = create_metrics_file(day1, "day1.json")
+    p2 = create_metrics_file(day2, "day2.json")
+    processor = load_and_merge_metrics(15, [p1, p2])
+    metrics = processor.merged_data["ns1"]["long-pod"]["metrics"]
+    assert 0 in metrics and 86400 in metrics
+    assert metrics[0]["duration"] + metrics[86400]["duration"] == 86400 * 2

@@ -176,6 +176,118 @@ class MetricsProcessor:
         return (current_time - previous_time) > interval
 
     @staticmethod
+    def _condense_values(values: list, interval: int, key: str = "value") -> list:
+        """Return list of condensed segments for one Prometheus series."""
+        if not values:
+            return []
+        values = sorted(values, key=lambda x: x[0])
+        segments = []
+        start_t, start_v = values[0]
+        prev_t = start_t
+        for t, v in values[1:]:
+            if v != start_v or MetricsProcessor._was_pod_stopped(t, prev_t, interval):
+                segments.append(
+                    {
+                        "start": start_t,
+                        "duration": prev_t - start_t + interval,
+                        key: start_v,
+                    }
+                )
+                start_t, start_v = t, v
+            prev_t = t
+        segments.append(
+            {
+                "start": start_t,
+                "duration": values[-1][0] - start_t + interval,
+                key: start_v,
+            }
+        )
+        return segments
+
+    @staticmethod
+    def condense_metric_series(metric_list: list, interval: int, key: str) -> list:
+        """Apply per-series condense to a list of Prometheus metric objects."""
+        if not metric_list:
+            return []
+        result = []
+        for item in metric_list:
+            segs = MetricsProcessor._condense_values(item["values"], interval, key)
+            for seg in segs:
+                seg.update(item["metric"])
+            result.extend(segs)
+        return result
+
+    ESSENTIAL_LABEL_KEYS = {
+        "pod",
+        "namespace",
+        "node",
+        "label_nerc_mghpcc_org_class",
+        "label_nvidia_com_gpu_product",
+        "resource",
+        "label_nvidia_com_gpu_machine",
+    }
+
+    @staticmethod
+    def build_namespaces_dict(
+        *segment_lists: list, gpu_mapping: dict | None = None
+    ) -> dict:
+        """Group condensed segments into the pod-centric export format."""
+        namespaces = {}
+        essential = MetricsProcessor.ESSENTIAL_LABEL_KEYS
+        for seg_list in segment_lists:
+            for seg in seg_list:
+                ns = seg.get("namespace")
+                pod = seg.get("pod")
+                if not ns or not pod:
+                    continue
+                namespaces.setdefault(ns, {}).setdefault(pod, {"segments": []})
+                clean = {
+                    k: v
+                    for k, v in seg.items()
+                    if k in essential
+                    or k
+                    in (
+                        "start",
+                        "duration",
+                        "cpu_request",
+                        "memory_request",
+                        "gpu_request",
+                    )
+                }
+                clean.pop("pod", None)
+                clean.pop("namespace", None)
+
+                if "label_nvidia_com_gpu_product" in clean:
+                    clean["gpu_type"] = clean.pop("label_nvidia_com_gpu_product")
+                elif gpu_mapping is not None and "gpu_request" in clean:
+                    node_name = clean.get("node")
+                    if node_name:
+                        clean["gpu_type"] = gpu_mapping.get(node_name, GPU_UNKNOWN_TYPE)
+                if "label_nvidia_com_gpu_machine" in clean:
+                    clean["node_model"] = clean.pop("label_nvidia_com_gpu_machine")
+                if "resource" in clean and clean.get("gpu_request") is not None:
+                    clean["gpu_resource"] = clean.pop("resource")
+
+                namespaces[ns][pod]["segments"].append(clean)
+        return namespaces
+
+    def load_segment_data(self, namespaces: dict):
+        """Load already-condensed pod-centric export data into merged_data."""
+        for ns, pods in namespaces.items():
+            self.merged_data.setdefault(ns, {})
+            for pod, pod_data in pods.items():
+                self.merged_data[ns].setdefault(pod, {"metrics": {}})
+                for seg in pod_data.get("segments", []):
+                    if "label_nerc_mghpcc_org_class" in seg:
+                        self.merged_data[ns][pod].setdefault(
+                            "label_nerc_mghpcc_org_class",
+                            seg["label_nerc_mghpcc_org_class"],
+                        )
+                    start = seg["start"]
+                    entry = self.merged_data[ns][pod]["metrics"].setdefault(start, {})
+                    entry.update({k: v for k, v in seg.items() if k != "start"})
+
+    @staticmethod
     def insert_node_labels(node_labels: list, resource_request_metrics: list) -> list:
         """Inserts node labels into resource_request_metrics"""
         node_label_dict = {}
@@ -214,3 +326,16 @@ class MetricsProcessor:
                 "class"
             )
         return resource_request_metrics
+
+    @staticmethod
+    def strip_to_essential_labels(metric_list: list) -> list:
+        """Return a new list with only the labels used by merge and export."""
+        if not metric_list:
+            return metric_list
+        essential = MetricsProcessor.ESSENTIAL_LABEL_KEYS
+        stripped = []
+        for item in metric_list:
+            slim_metric = {k: v for k, v in item["metric"].items() if k in essential}
+            stripped.append({"metric": slim_metric, "values": item["values"]})
+
+        return stripped

@@ -52,7 +52,16 @@ This will collect metrics from March 1st to March 7th, inclusive.
 
 ### Merging and producing the report
 
-You can generate the openshift usage report by passing it multiple metrics files
+`merge.py` reads collected metrics JSON and writes namespace, class, and pod CSV reports.
+It accepts two file shapes:
+
+- Legacy files with `cpu_metrics` / `memory_metrics` / `gpu_metrics` (default `metrics-YYYY-MM-DD.json`).
+- Namespace files with `namespaces` / `segments` (default `metrics-YYYY-MM-DD-namespaces.json`).
+
+Pass one shape or the other for a given day.
+Do not pass both the legacy file and the namespaces file for the same period, or the same pods will be ingested twice.
+
+You can pass several files to cover a longer range:
 
 ```
    $ python -m openshift_metrics.merge \
