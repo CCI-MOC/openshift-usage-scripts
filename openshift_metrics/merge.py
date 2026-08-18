@@ -109,19 +109,38 @@ def load_and_merge_metrics(interval_minutes, files: List[str]) -> MetricsProcess
     """Load and merge metrics
 
     Loads metrics from provided json files and then returns a processor
-    that has all the merged data.
+    that has all the merged data. Files may use the original cpu_metrics
+    schema, the new namespaces schema, or both.
     """
     processor = MetricsProcessor(interval_minutes)
+    loaded_legacy = False
+    new_namespaces = []
     for file in files:
         with open(file, "r") as jsonfile:
             metrics_from_file = json.load(jsonfile)
-            cpu_request_metrics = metrics_from_file["cpu_metrics"]
-            memory_request_metrics = metrics_from_file["memory_metrics"]
-            gpu_request_metrics = metrics_from_file.get("gpu_metrics", None)
-            processor.merge_metrics("cpu_request", cpu_request_metrics)
-            processor.merge_metrics("memory_request", memory_request_metrics)
-            if gpu_request_metrics is not None:
-                processor.merge_metrics("gpu_request", gpu_request_metrics)
+            if "cpu_metrics" in metrics_from_file:
+                loaded_legacy = True
+                cpu_request_metrics = metrics_from_file["cpu_metrics"]
+                memory_request_metrics = metrics_from_file["memory_metrics"]
+                gpu_request_metrics = metrics_from_file.get("gpu_metrics", None)
+                processor.merge_metrics("cpu_request", cpu_request_metrics)
+                processor.merge_metrics("memory_request", memory_request_metrics)
+                if gpu_request_metrics is not None:
+                    processor.merge_metrics("gpu_request", gpu_request_metrics)
+            if (
+                "namespaces" in metrics_from_file
+                and "cpu_metrics" not in metrics_from_file
+            ):
+                new_namespaces.append(metrics_from_file["namespaces"])
+
+    if loaded_legacy:
+        processor.merged_data = processor.condense_metrics(
+            ["cpu_request", "memory_request", "gpu_request", "gpu_type"]
+        )
+
+    for namespaces in new_namespaces:
+        processor.load_segment_data(namespaces)
+
     logger.info(f"Total metric files read: {len(files)}")
     return processor
 
@@ -305,9 +324,7 @@ def main():
 
     # load and merge the metrics from the files, followed by condensing the metrics.
     processor = load_and_merge_metrics(metrics_metadata.interval_minutes, files)
-    condensed_metrics_dict = processor.condense_metrics(
-        ["cpu_request", "memory_request", "gpu_request", "gpu_type"]
-    )
+    condensed_metrics_dict = processor.merged_data
 
     # gather invoice rates and su defitions.
     invoice_rates, ignore_hours = get_rates_and_outages(args, metrics_metadata)

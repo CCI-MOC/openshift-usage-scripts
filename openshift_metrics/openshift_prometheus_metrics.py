@@ -106,6 +106,8 @@ def main():
         args.openshift_url, args.openshift_url
     )
 
+    interval_seconds = PROM_QUERY_INTERVAL_MINUTES * 60
+
     cpu_request_metrics = prom_client.query_metric(
         CPU_REQUEST, report_start_date, report_end_date
     )
@@ -145,21 +147,56 @@ def main():
         )
         pass
 
+    cpu_segments = MetricsProcessor.condense_metric_series(
+        metrics_dict["cpu_metrics"], interval_seconds, "cpu_request"
+    )
+    mem_segments = MetricsProcessor.condense_metric_series(
+        metrics_dict["memory_metrics"], interval_seconds, "memory_request"
+    )
+    gpu_segments = MetricsProcessor.condense_metric_series(
+        metrics_dict.get("gpu_metrics") or [], interval_seconds, "gpu_request"
+    )
+    gpu_mapping = MetricsProcessor._load_gpu_mapping("gpu_node_map.json")
+    namespaces_dict = {
+        "start_date": metrics_dict["start_date"],
+        "end_date": metrics_dict["end_date"],
+        "interval_minutes": metrics_dict["interval_minutes"],
+        "cluster_name": metrics_dict["cluster_name"],
+        "namespaces": MetricsProcessor.build_namespaces_dict(
+            cpu_segments, mem_segments, gpu_segments, gpu_mapping=gpu_mapping
+        ),
+    }
+
     month_year = datetime.strptime(report_start_date, "%Y-%m-%d").strftime("%Y-%m")
 
     if report_start_date == report_end_date:
         s3_location = f"data_{month_year}/metrics-{report_start_date}.json"
+        s3_namespaces_location = (
+            f"data_{month_year}/metrics-{report_start_date}-namespaces.json"
+        )
     else:
         s3_location = (
             f"data_{month_year}/metrics-{report_start_date}-to-{report_end_date}.json"
         )
+        s3_namespaces_location = f"data_{month_year}/metrics-{report_start_date}-to-{report_end_date}-namespaces.json"
+
+    namespaces_file = (
+        output_file[: -len(".json")] + "-namespaces.json"
+        if output_file.endswith(".json")
+        else output_file + "-namespaces.json"
+    )
 
     with open(output_file, "w") as file:
         logger.info(f"Writing metrics to {output_file}")
         json.dump(metrics_dict, file)
 
+    with open(namespaces_file, "w") as file:
+        logger.info(f"Writing namespaces metrics to {namespaces_file}")
+        json.dump(namespaces_dict, file)
+
     if args.upload_to_s3:
         utils.upload_to_s3(output_file, S3_METRICS_BUCKET, s3_location)
+        utils.upload_to_s3(namespaces_file, S3_METRICS_BUCKET, s3_namespaces_location)
 
 
 if __name__ == "__main__":
