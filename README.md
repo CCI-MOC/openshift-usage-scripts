@@ -12,6 +12,12 @@ This was a fork of https://github.com/OCP-on-NERC/xdmod-openshift-scripts
 In order to run the scripts, you need to set the following environment variables:
 
 - `OPENSHIFT_TOKEN` for `openshift_prometheus_metrics.py` when collecting metrics from thanos/prometheus.
+- `OPENSHIFT_CLUSTER_ID` for `openshift_prometheus_metrics.py`. The ID of the cluster to collect metrics for.
+- `CLUSTER_TYPE` (optional) is either `standalone` (default) or `hypershift`. For hypershift clusters,
+  point `OPENSHIFT_PROMETHEUS_URL` at the management cluster; queries are filtered by `_id="<OPENSHIFT_CLUSTER_ID>"`.
+  Pod and node labels are not collected for hypershift clusters.
+- `OPENSHIFT_CLUSTER_NAME` (optional) is the cluster name used in report file names. Defaults to
+  `OPENSHIFT_CLUSTER_ID`.
 
 We are using the token for `xdmod-reader` service account in `xdmod-reader` namespace on nerc-prod cluster. You can extract the token with:
 `oc get secrets -n xdmod-reader --as system:admin xdmod-reader-token-m6s2m -o yaml | yq .data.token -r |base64 -d` .
@@ -81,12 +87,16 @@ following Prometheus query:
 This query generates samples for "step_min" minutes. The script will then merge consecutive samples
 together if their metrics are the same.
 
-The script queries the following metrics:
+The script queries the following metrics. For hypershift clusters, `_id="<OPENSHIFT_CLUSTER_ID>"` is
+added to the resource request queries.
 
-* *kube_pod_resource_request{unit="cores"} unless on(pod, namespace) kube_pod_status_unschedulable*
-   * Cores requested by a pods that are scheduled to run.
-* *'kube_pod_resource_request{unit="bytes"} unless on(pod, namespace) kube_pod_status_unschedulable'*
-   * Memory (RAM) requested by pods that are scheduled to run.
-* *'kube_pod_resource_request{resource=~".*gpu.*"} unless on(pod, namespace) kube_pod_status_unschedulable'*
-   * GPU Requested by pods that are sheculed to run. The requested GPU resource must have the word "gpu" in it
-   to be captured by this query. E.g. `nvidia.com/gpu`
+* *kube_pod_resource_request{resource="cpu", node!=""}*
+   * Cores requested by pods that are scheduled to a node.
+* *kube_pod_resource_request{resource="memory", node!=""}*
+   * Memory (RAM) requested by pods that are scheduled to a node.
+* *kube_pod_resource_request{resource=~"nvidia.com.\*", node!=""}*
+   * GPUs requested by pods that are scheduled to a node. E.g. `nvidia.com/gpu`
+* *kube_pod_labels{label_nerc_mghpcc_org_class!=""}* (standalone only)
+   * The class label of each pod.
+* *kube_node_labels{label_nvidia_com_gpu_product!=""}* (standalone only)
+   * The GPU product of each node.
