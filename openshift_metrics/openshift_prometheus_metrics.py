@@ -22,9 +22,14 @@ import logging
 from openshift_metrics import utils
 from openshift_metrics.prometheus_client import PrometheusClient
 from openshift_metrics.metrics_processor import MetricsProcessor
+from openshift_metrics.query_builder import QueryBuilder
+from openshift_metrics.metrics_normalizer import MetricsNormalizer
 from openshift_metrics.config import (
     OPENSHIFT_PROMETHEUS_URL,
     OPENSHIFT_TOKEN,
+    OPENSHIFT_CLUSTER_ID,
+    CLUSTER_TYPE,
+    OPENSHIFT_CLUSTER_NAME,
     S3_METRICS_BUCKET,
     PROM_QUERY_INTERVAL_MINUTES,
 )
@@ -32,18 +37,17 @@ from openshift_metrics.config import (
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-CPU_REQUEST = 'kube_pod_resource_request{resource="cpu", node!=""} unless on(pod, namespace) kube_pod_status_unschedulable'
-MEMORY_REQUEST = 'kube_pod_resource_request{resource="memory", node!=""} unless on(pod, namespace) kube_pod_status_unschedulable'
-GPU_REQUEST = 'kube_pod_resource_request{resource=~"nvidia.com.*", node!=""} unless on(pod, namespace) kube_pod_status_unschedulable'
-KUBE_NODE_LABELS = 'kube_node_labels{label_nvidia_com_gpu_product!=""}'
-KUBE_POD_LABELS = 'kube_pod_labels{label_nerc_mghpcc_org_class!=""}'
+CLUSTER_TYPES = ("standalone", "hypershift")
 
-URL_CLUSTER_NAME_MAPPING = {
-    "https://thanos-querier-openshift-monitoring.apps.shift.nerc.mghpcc.org": "ocp-prod",
-    "https://thanos-querier-openshift-monitoring.apps.ocp-test.nerc.mghpcc.org": "ocp-test",
-    "https://thanos-querier-openshift-monitoring.apps.edu.nerc.mghpcc.org": "academic",
-    "https://thanos-querier-openshift-monitoring.apps.barcelona.nerc.mghpcc.org": "barcelona",
-}
+
+def validate_config():
+    """Exits if the configuration needed to collect metrics is missing or invalid"""
+    if CLUSTER_TYPE not in CLUSTER_TYPES:
+        sys.exit(f"CLUSTER_TYPE must be one of {CLUSTER_TYPES}, got {CLUSTER_TYPE!r}")
+    if not OPENSHIFT_CLUSTER_ID:
+        sys.exit("OPENSHIFT_CLUSTER_ID must be set in your environment")
+    if not OPENSHIFT_TOKEN:
+        sys.exit("OPENSHIFT_TOKEN must be set in your environment")
 
 
 def main():
@@ -73,6 +77,7 @@ def main():
         sys.exit(
             "Must specify --openshift-url or set OPENSHIFT_PROMETHEUS_URL in your environment"
         )
+    validate_config()
     openshift_url = args.openshift_url
 
     report_start_date = args.report_start_date
@@ -93,6 +98,7 @@ def main():
     logger.info(
         f"Generating report starting {report_start_date} and ending {report_end_date} in {output_file} with interval {PROM_QUERY_INTERVAL_MINUTES} minute"
     )
+    logger.info(f"Using cluster type: {CLUSTER_TYPE}")
 
     prom_client = PrometheusClient(
         openshift_url, OPENSHIFT_TOKEN, PROM_QUERY_INTERVAL_MINUTES
@@ -102,48 +108,71 @@ def main():
     metrics_dict["start_date"] = report_start_date
     metrics_dict["end_date"] = report_end_date
     metrics_dict["interval_minutes"] = PROM_QUERY_INTERVAL_MINUTES
-    metrics_dict["cluster_name"] = URL_CLUSTER_NAME_MAPPING.get(
-        args.openshift_url, args.openshift_url
-    )
+    metrics_dict["cluster_id"] = OPENSHIFT_CLUSTER_ID
+    metrics_dict["cluster_name"] = OPENSHIFT_CLUSTER_NAME
 
+    # Hosted clusters don't export kube_pod_labels or kube_node_labels to the
+    # management cluster, so we skip the label queries for hypershift.
+    query_labels = CLUSTER_TYPE == "standalone"
+    if not query_labels:
+        logger.info("Skipping pod and node label queries for hypershift cluster")
+
+    query_builder = QueryBuilder(CLUSTER_TYPE, OPENSHIFT_CLUSTER_ID)
+
+    cpu_request_query = query_builder.build_cpu_request()
     cpu_request_metrics = prom_client.query_metric(
-        CPU_REQUEST, report_start_date, report_end_date
+        cpu_request_query, report_start_date, report_end_date
     )
+    cpu_request_metrics = MetricsNormalizer.normalize(cpu_request_metrics, CLUSTER_TYPE)
+    metrics_dict["cpu_metrics"] = cpu_request_metrics
 
-    try:
-        pod_labels = prom_client.query_metric(
-            KUBE_POD_LABELS, report_start_date, report_end_date
-        )
-        metrics_dict["cpu_metrics"] = MetricsProcessor.insert_pod_labels(
-            pod_labels, cpu_request_metrics
-        )
-    except utils.EmptyResultError:
-        logger.info(
-            f"No pod labels found for the period {report_start_date} to {report_end_date}"
-        )
-        metrics_dict["cpu_metrics"] = cpu_request_metrics
+    if query_labels:
+        try:
+            pod_labels = prom_client.query_metric(
+                query_builder.build_kube_pod_labels(),
+                report_start_date,
+                report_end_date,
+            )
+            metrics_dict["cpu_metrics"] = MetricsProcessor.insert_pod_labels(
+                pod_labels, cpu_request_metrics
+            )
+        except utils.EmptyResultError:
+            logger.info(
+                f"No pod labels found for the period {report_start_date} to {report_end_date}"
+            )
 
+    memory_request_query = query_builder.build_memory_request()
     memory_request_metrics = prom_client.query_metric(
-        MEMORY_REQUEST, report_start_date, report_end_date
+        memory_request_query, report_start_date, report_end_date
+    )
+    memory_request_metrics = MetricsNormalizer.normalize(
+        memory_request_metrics, CLUSTER_TYPE
     )
     metrics_dict["memory_metrics"] = memory_request_metrics
 
     # because if nobody requests a GPU then we will get an empty set
     try:
+        gpu_request_query = query_builder.build_gpu_request()
         gpu_request_metrics = prom_client.query_metric(
-            GPU_REQUEST, report_start_date, report_end_date
+            gpu_request_query, report_start_date, report_end_date
         )
-        node_labels = prom_client.query_metric(
-            KUBE_NODE_LABELS, report_start_date, report_end_date
+        gpu_request_metrics = MetricsNormalizer.normalize(
+            gpu_request_metrics, CLUSTER_TYPE
         )
-        metrics_dict["gpu_metrics"] = MetricsProcessor.insert_node_labels(
-            node_labels, gpu_request_metrics
-        )
+        if query_labels:
+            node_labels = prom_client.query_metric(
+                query_builder.build_kube_node_labels(),
+                report_start_date,
+                report_end_date,
+            )
+            gpu_request_metrics = MetricsProcessor.insert_node_labels(
+                node_labels, gpu_request_metrics
+            )
+        metrics_dict["gpu_metrics"] = gpu_request_metrics
     except utils.EmptyResultError:
         logger.info(
             f"No GPU metrics found for the period {report_start_date} to {report_end_date}"
         )
-        pass
 
     month_year = datetime.strptime(report_start_date, "%Y-%m-%d").strftime("%Y-%m")
 
